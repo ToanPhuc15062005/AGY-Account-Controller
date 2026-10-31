@@ -1497,6 +1497,225 @@ def cmd_rename(args):
 
 
 # ---------------------------------------------------------------------------
+# Account Health & Token Verification (check / check-all)
+# ---------------------------------------------------------------------------
+def check_account_status(profile_path: Path) -> dict:
+    data = json.loads(profile_path.read_text(encoding="utf-8"))
+    session = data.get("session", {})
+    meta = data.get("_meta", {})
+    email = session.get("id_token_email", meta.get("email", "Unknown"))
+    token = session.get("token", {})
+    expiry_str = token.get("expiry")
+    has_refresh = bool(token.get("refresh_token"))
+
+    # Check if account is in quota cooldown via SQLite
+    is_cooldown = False
+    cooldown_until = None
+    try:
+        from agy_mas.storage.database import Database
+        from agy_mas.config import MASConfig
+        cfg = MASConfig.load()
+        if Path(cfg.storage.db_path).exists():
+            db = Database(cfg.storage.db_path)
+            rows = db.fetchall(
+                "SELECT cooldown_until FROM account_model_resources WHERE account_id = ? AND resource_state = 'COOLDOWN';",
+                (profile_path.stem,)
+            )
+            for r in rows:
+                if r["cooldown_until"]:
+                    until_dt = datetime.fromisoformat(r["cooldown_until"])
+                    if datetime.now(timezone.utc) < until_dt:
+                        is_cooldown = True
+                        cooldown_until = r["cooldown_until"]
+                        break
+            db.close()
+    except Exception:
+        pass
+
+    if is_cooldown:
+        icon = f"{Style.MAGENTA}#{Style.RESET}"
+        status_text = "Đang trong Quota Limit"
+        conclusion = f"{Style.MAGENTA}Chờ cooldown{Style.RESET}"
+        return {
+            "email": email, "icon": icon, "status_text": status_text,
+            "conclusion": conclusion, "has_refresh": has_refresh,
+            "state_code": "COOLDOWN", "cooldown_until": cooldown_until
+        }
+
+    if expiry_str:
+        try:
+            exp_dt = datetime.fromisoformat(expiry_str)
+            if exp_dt.tzinfo is None:
+                exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
+            if exp_dt > now:
+                diff = exp_dt - now
+                total_min = int(diff.total_seconds() // 60)
+                hours = total_min // 60
+                mins = total_min % 60
+                icon = f"{Style.GREEN}+{Style.RESET}"
+                status_text = f"Còn hạn ({hours}h {mins:02d}m)"
+                conclusion = f"{Style.GREEN}Sẵn sàng{Style.RESET}"
+                return {
+                    "email": email, "icon": icon, "status_text": status_text,
+                    "conclusion": conclusion, "has_refresh": has_refresh,
+                    "state_code": "VALID"
+                }
+            else:
+                if has_refresh:
+                    icon = f"{Style.YELLOW}!{Style.RESET}"
+                    status_text = "Cần refresh (có sẵn RT)"
+                    conclusion = f"{Style.YELLOW}Sẵn sàng (Auto-refresh){Style.RESET}"
+                    return {
+                        "email": email, "icon": icon, "status_text": status_text,
+                        "conclusion": conclusion, "has_refresh": has_refresh,
+                        "state_code": "NEED_REFRESH"
+                    }
+                else:
+                    icon = f"{Style.RED}-{Style.RESET}"
+                    status_text = "Hết hạn (không có RT)"
+                    conclusion = f"{Style.RED}Đăng nhập lại{Style.RESET}"
+                    return {
+                        "email": email, "icon": icon, "status_text": status_text,
+                        "conclusion": conclusion, "has_refresh": has_refresh,
+                        "state_code": "EXPIRED"
+                    }
+        except Exception:
+            pass
+
+    icon = f"{Style.RED}-{Style.RESET}"
+    status_text = "Chưa có token"
+    conclusion = f"{Style.RED}Đăng nhập lại{Style.RESET}"
+    return {
+        "email": email, "icon": icon, "status_text": status_text,
+        "conclusion": conclusion, "has_refresh": has_refresh,
+        "state_code": "NO_TOKEN"
+    }
+
+
+def probe_single_account(profile_path: Path):
+    data = json.loads(profile_path.read_text(encoding="utf-8"))
+    session = data.get("session", {})
+    email = session.get("id_token_email", "Unknown")
+
+    print(f"\n{Style.BOLD}Kiểm tra tài khoản '{profile_path.stem}':{Style.RESET}")
+    print(f"  Google Email  : {email}")
+
+    token = session.get("token", {})
+    has_refresh = bool(token.get("refresh_token"))
+
+    print(f"  Refresh Token : {'Có sẵn ✓' if has_refresh else 'Thiếu ✗'}")
+
+    if not has_refresh:
+        print(f"  Trạng thái    : {Style.RED}-{Style.RESET} Hết hạn hoàn toàn. Không tìm thấy Refresh Token.")
+        print(f"  Khắc phục     : Chạy lệnh {Style.CYAN}agy-controller login {profile_path.stem}{Style.RESET} để đăng nhập lại.\n")
+        return
+
+    print("  Live Probe    : Đang gửi yêu cầu xác thực tới Google...", end="", flush=True)
+
+    with CredentialSwitchLock():
+        backup_cred = get_credential_raw()
+        backup_profile = get_active_profile_name()
+        set_credential_raw(CREDENTIAL_TARGET, "antigravity", json.dumps(session))
+        try:
+            res = subprocess.run(["agy", "-p", "ping"], capture_output=True, text=True, timeout=12)
+            if res.returncode == 0:
+                refreshed_raw = get_credential_raw()
+                if refreshed_raw:
+                    refreshed_data = json.loads(refreshed_raw)
+                    data["session"] = refreshed_data
+                    profile_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+                new_expiry = data.get("session", {}).get("token", {}).get("expiry", "")
+                print(f" {Style.GREEN}Thành công! ✓{Style.RESET}")
+                print(f"  Kết quả       : {Style.GREEN}+{Style.RESET} Token hợp lệ và đã được làm mới!")
+                if new_expiry:
+                    print(f"  Hạn dùng mới  : {new_expiry}")
+                print(f"  Tài khoản     : {Style.GREEN}Sẵn sàng hoạt động hoàn toàn.{Style.RESET}\n")
+            else:
+                out = (res.stdout + "\n" + res.stderr).lower()
+                if "authentication required" in out or "invalid_grant" in out:
+                    print(f" {Style.RED}Thất bại ✗{Style.RESET}")
+                    print(f"  Kết quả       : {Style.RED}-{Style.RESET} Google từ chối Refresh Token (hết hạn 7 ngày hoặc bị thu hồi).")
+                    print(f"  Khắc phục     : Chạy lệnh {Style.CYAN}agy-controller login {profile_path.stem}{Style.RESET} để đăng nhập lại.\n")
+                else:
+                    print(f" {Style.YELLOW}Không thể xác định ⚠{Style.RESET}")
+                    print(f"  Lỗi chi tiết  : {res.stderr.strip() or res.stdout.strip()[:100]}\n")
+        finally:
+            if backup_cred:
+                set_credential_raw(CREDENTIAL_TARGET, "antigravity", backup_cred)
+            if backup_profile:
+                set_active_profile_name(backup_profile)
+
+
+def cmd_check_all(args):
+    ensure_profiles_dir()
+    profiles = get_sorted_profiles()
+    if not profiles:
+        print_info("Chưa có profile nào. Dùng 'agy-controller save <tên>' hoặc 'login' để tạo mới.")
+        return
+
+    active_name = get_active_profile_name()
+
+    col_stt = 5
+    col_acc = 18
+    col_email = 37
+    col_token = 28
+    col_res = 28
+
+    print(f"\n{Style.BOLD}Bảng trạng thái xác thực tài khoản Antigravity:{Style.RESET}\n")
+
+    top = f"┌{'─' * col_stt}┬{'─' * col_acc}┬{'─' * col_email}┬{'─' * col_token}┬{'─' * col_res}┐"
+    head = (
+        f"│{pad_cell('STT', col_stt, 'center')}│"
+        f"{pad_cell('Tài khoản', col_acc, 'center')}│"
+        f"{pad_cell('Email', col_email, 'center')}│"
+        f"{pad_cell('Tình trạng Token', col_token, 'center')}│"
+        f"{pad_cell('Kết luận', col_res, 'center')}│"
+    )
+    mid = f"├{'─' * col_stt}┼{'─' * col_acc}┼{'─' * col_email}┼{'─' * col_token}┼{'─' * col_res}┤"
+    bot = f"└{'─' * col_stt}┴{'─' * col_acc}┴{'─' * col_email}┴{'─' * col_token}┴{'─' * col_res}┘"
+
+    print(top)
+    print(head)
+    print(mid)
+
+    for idx, p in enumerate(profiles, start=1):
+        is_active = (active_name and p.stem.lower() == active_name.lower())
+        stt_str = f"{idx}*" if is_active else str(idx)
+        status_info = check_account_status(p)
+
+        token_cell = f"{status_info['icon']} {status_info['status_text']}"
+        row = (
+            f"│{pad_cell(stt_str, col_stt, 'center')}│"
+            f" {pad_cell(p.stem, col_acc - 1)}│"
+            f" {pad_cell(status_info['email'], col_email - 1)}│"
+            f" {pad_cell(token_cell, col_token - 1)}│"
+            f" {pad_cell(status_info['conclusion'], col_res - 1)}│"
+        )
+        print(row)
+
+    print(bot)
+    print(f"\n  *         : Tài khoản đang kích hoạt (Active)")
+    print(f"  {Style.GREEN}+{Style.RESET} (Xanh lá) : Access Token còn hạn, sẵn sàng")
+    print(f"  {Style.YELLOW}!{Style.RESET} (Vàng)    : Access Token hết hạn, có sẵn Refresh Token (tự động làm mới khi chạy)")
+    print(f"  {Style.RED}-{Style.RESET} (Đỏ)      : Hết hạn hoàn toàn / Thiếu token (Cần: agy-controller login <tên>)")
+    print(f"  {Style.MAGENTA}#{Style.RESET} (Tím)     : Đang trong thời gian cooldown hạn ngạch (Quota Limit)")
+    print(f"\n  Kiểm tra sâu & tự động refresh: {Style.CYAN}agy-controller check <STT hoặc Tên>{Style.RESET}\n")
+
+
+def cmd_check(args):
+    target = getattr(args, "target", None)
+    if target:
+        profile_path, stt = resolve_profile(target)
+        if not profile_path:
+            print_error(f"Không tìm thấy tài khoản '{target}'")
+            return
+        probe_single_account(profile_path)
+    else:
+        cmd_check_all(args)
+
+
+# ---------------------------------------------------------------------------
 # Installer & System Integration
 # ---------------------------------------------------------------------------
 def get_best_bin_dir() -> Path:
@@ -1662,6 +1881,15 @@ def main():
     p_ren.add_argument("new_name", help="Tên profile mới")
     p_ren.add_argument("-f", "--force", action="store_true", help="Ghi đè nếu tên mới đã tồn tại")
     p_ren.set_defaults(func=cmd_rename)
+
+    # check
+    p_check = subparsers.add_parser("check", help="Kiểm tra tình trạng đăng nhập của tài khoản")
+    p_check.add_argument("target", nargs="?", help="Số STT hoặc tên profile cần kiểm tra sâu")
+    p_check.set_defaults(func=cmd_check)
+
+    # check-all
+    p_check_all = subparsers.add_parser("check-all", help="Kiểm tra trạng thái xác thực toàn bộ tài khoản và in bảng")
+    p_check_all.set_defaults(func=cmd_check_all)
 
     # install
     p_inst = subparsers.add_parser("install", help="Cài đặt lệnh thống nhất agy-controller vào PATH")

@@ -158,9 +158,27 @@ agy-controller
 :: Liệt kê tài khoản
 agy-controller list
 
+:: Kiểm tra trạng thái xác thực toàn bộ tài khoản (bảng trực quan)
+agy-controller check-all
+:: hoặc
+agy-controller check
+
+:: Kiểm tra sâu & tự động refresh token cho 1 tài khoản cụ thể
+agy-controller check 1
+agy-controller check toanphucnguyena1
+
 :: Chuyển đổi tài khoản nhanh
 agy-controller switch 2
 
 :: Chạy song song nhiều worker với bảo vệ chống xung đột Windows Credential Manager
 agy-controller run-many -w 1 "Prompt worker 1" -w 2 "Prompt worker 2"
 ```
+
+### Ký hiệu trạng thái Token (`agy-controller check`):
+| Ký hiệu | Màu sắc | Ý nghĩa |
+| :---: | :---: | :--- |
+| `+` | Xanh lá | **VALID**: Access Token còn hạn và sẵn sàng thực thi ngay lập tức. |
+| `!` | Vàng | **NEED_REFRESH**: Access Token hết hạn, có sẵn Refresh Token (tự động làm mới khi chạy hoặc qua `check <STT>`). |
+| `-` | Đỏ | **EXPIRED / NO_TOKEN**: Hết hạn hoàn toàn hoặc thiếu Refresh Token (Cần chạy `agy-controller login <tên>`). |
+| `#` | Tím | **COOLDOWN**: Tài khoản đang bị giới hạn hạn ngạch (Quota Rate Limit) trong SQLite. |
+
