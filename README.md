@@ -87,53 +87,108 @@ src/
 
 ---
 
-## ⚡ Hướng dẫn sử dụng CLI `agy-mas`
+## ⚡ Hướng dẫn chi tiết sử dụng CLI `agy-mas`
 
-Hệ thống cung cấp sẵn các wrapper [agy-mas.cmd](file:///C:/Users/TOAN%20PHUC/Desktop/project/multi-agy-tool/agy-mas.cmd) và [agy-mas.ps1](file:///C:/Users/TOAN%20PHUC/Desktop/project/multi-agy-tool/agy-mas.ps1).
+Hệ thống cung cấp sẵn các wrapper [agy-mas.cmd](file:///C:/Users/TOAN%20PHUC/Desktop/project/multi-agy-tool/agy-mas.cmd) và [agy-mas.ps1](file:///C:/Users/TOAN%20PHUC/Desktop/project/multi-agy-tool/agy-mas.ps1) trong thư mục PATH người dùng (`AppData\Local\agy\bin` và `.gemini\antigravity-cli\bin`).
 
-### 1. Quản lý dự án (Project)
+---
+
+### Cách 1: Chạy tự động hoàn toàn với một lệnh duy nhất (`agy-mas run`)
+
+Lệnh `run` là giải pháp mạnh mẽ nhất để giải quyết bài toán: **từ một mục tiêu lớn (Goal) -> tự động lập kế hoạch đa tác vụ độc lập -> phân công nhiều agent chạy song song trên nhiều tài khoản Google khác nhau mà không bị xung đột ghi đè hay vướng quyền**:
+
 ```cmd
-:: Tạo dự án mới
+:: Cú pháp cơ bản
+agy-mas run "Xây dựng REST API backend với FastAPI kết nối PostgreSQL và kiểm thử pytest"
+
+:: Cú pháp đầy đủ với tùy chọn nâng cao
+agy-mas run "Xây dựng hệ thống Authentication và thanh toán Stripe" ^
+    --name "Auth & Payment System" ^
+    --workspace "C:\projects\my-ecommerce" ^
+    --accounts default,toanphucnguyena1,toanphucnguyena2,n23dccn115 ^
+    --concurrency 3 ^
+    --model gemini-2.5-pro
+```
+
+#### Các tùy chọn của `agy-mas run`:
+* `goal` *(bắt buộc)*: Mô tả mục tiêu tổng quát của dự án cần hoàn thành.
+* `--name`: Tên định danh gợi nhớ cho dự án (mặc định lấy theo 30 ký tự đầu của mục tiêu).
+* `--id`: Mã ID dự án duy nhất (mặc định sinh ngẫu nhiên dạng `proj_xxxxxx`).
+* `--workspace`: Đường dẫn thư mục làm việc của dự án (mặc định lấy thư mục hiện tại `.`).
+* `--accounts`: Danh sách các tài khoản phân tách bằng dấu phẩy dùng để luân phiên chạy tác vụ (mặc định: `default`).
+* `--concurrency`: Số lượng agent được phép chạy đồng thời tối đa (mặc định: `4`).
+* `--model`: Mô hình LLM được sử dụng để phân rã mục tiêu (mặc định: `gemini-2.5-pro`).
+
+#### Quy trình 3 bước tự động thực thi:
+1. **[1/3] Khởi tạo Dự án & Database**: Đăng ký dự án vào SQLite WAL, gắn kết `workspace_root` và chuẩn bị snapshot baseline.
+2. **[2/3] Phân rã mục tiêu (Planner & Validator)**:
+   * Tự động sinh danh sách các hợp đồng tác vụ (`TaskContract`).
+   * Phân tách phạm vi ghi (`write_paths`) độc lập cho từng tác vụ để tránh ghi đè đồng thời.
+   * Xây dựng đồ thị có hướng không chu trình (DAG) bằng thuật toán Kahn's Topological Sort.
+3. **[3/3] Điều phối đa Agent (Multi-Agent Orchestrator)**:
+   * Khởi chạy vòng lặp điều phối tập trung (Central Tick Loop).
+   * Cấp phát tài khoản khả dụng cho từng tác vụ, khởi chạy headless agent trong Windows Job Objects.
+   * Giám sát, kiểm định artifact hoàn thành, tự động chuyển đổi tài khoản (failover) nếu phát hiện cạn hạn ngạch (quota cooldown).
+
+---
+
+### Cách 2: Quy trình quản lý thủ công & kiểm soát chi tiết
+
+Nếu bạn muốn tự tay định nghĩa các tác vụ hoặc kiểm tra từng giai đoạn, bạn có thể sử dụng các nhóm lệnh chuyên biệt:
+
+#### 1. Quản lý dự án (`project`)
+```cmd
+:: Tạo dự án mới với đường dẫn workspace chỉ định
 agy-mas project create "Payment Module" "Build Stripe webhook integration" --workspace "C:\projects\payment" --id proj_pay
 
-:: Liệt kê các dự án
+:: Liệt kê toàn bộ các dự án trong hệ thống
 agy-mas project list
 
-:: Xem chi tiết cấu hình dự án
+:: Xem chi tiết cấu hình và trạng thái dự án dưới dạng JSON
 agy-mas project inspect proj_pay
 ```
 
-### 2. Quản lý tác vụ (Task)
+#### 2. Tự động sinh kế hoạch cho dự án đã có (`plan`)
 ```cmd
-:: Tạo tác vụ gốc
-agy-mas task create proj_pay task_schema "Design database schema"
+:: Phân rã mục tiêu của dự án đã đăng ký thành các tác vụ hợp lệ
+agy-mas plan proj_pay --model gemini-2.5-pro
+```
 
-:: Tạo tác vụ phụ thuộc (chạy sau task_schema)
-agy-mas task create proj_pay task_api "Implement webhook endpoint" --depends-on task_schema
+#### 3. Quản lý tác vụ tùy chỉnh (`task`)
+```cmd
+:: Tạo tác vụ gốc (chạy đầu tiên)
+agy-mas task create proj_pay task_schema "Design database schema & migration models" --priority 100
 
-:: Liệt kê các tác vụ của dự án kèm trạng thái DAG
+:: Tạo tác vụ phụ thuộc (chỉ chạy sau khi task_schema hoàn thành)
+agy-mas task create proj_pay task_api "Implement webhook endpoint" --depends-on task_schema --priority 80
+
+:: Tạo tác vụ kiểm thử (chạy sau task_api)
+agy-mas task create proj_pay task_test "Write unit tests for webhook" --depends-on task_api --priority 50
+
+:: Liệt kê các tác vụ của dự án kèm trạng thái DAG và phụ thuộc
 agy-mas task list proj_pay
 ```
 
-### 3. Kiểm tra hạn ngạch & tài nguyên (Resource)
+#### 4. Khởi chạy điều phối Multi-Agent (`orchestrate`)
 ```cmd
-:: Xem trạng thái cooldown của các tài khoản và mô hình
-agy-mas resource status
+:: Bắt đầu điều phối dự án với danh sách tài khoản xoay vòng và giới hạn 3 agent song song
+agy-mas orchestrate start proj_pay --accounts default,toanphucnguyena1,toanphucnguyena2 --concurrency 3
 ```
 
-### 4. Khởi chạy điều phối Multi-Agent (Orchestrate)
+#### 5. Giám sát hạn ngạch & tài nguyên (`resource`)
 ```cmd
-:: Chạy điều phối dự án với danh sách tài khoản chỉ định và giới hạn song song
-agy-mas orchestrate start proj_pay --accounts default,toanphucnguyena1,toanphucnguyena2 --concurrency 4
+:: Kiểm tra các cặp (tài khoản, mô hình) đang trong thời gian cooldown hạn ngạch (Quota Cooldown)
+agy-mas resource status
 ```
 
 ---
 
 ## 🧪 Bộ kiểm thử tự động (Test Suite)
 
-Hệ thống đi kèm bộ kiểm thử toàn diện với **36/36 tests** đạt 100%:
+Hệ thống đi kèm bộ kiểm thử toàn diện với **37/37 tests** đạt 100%:
 * `tests/unit/test_storage.py`: Kiểm thử migrations, foreign keys, transaction rollback và 7 repositories.
 * `tests/unit/test_task_engine.py`: Kiểm thử hợp đồng tác vụ, chu trình phụ thuộc, xung đột ghi đè.
+* `tests/unit/test_planner.py`: Kiểm thử bộ phân rã mục tiêu tự động, tính hợp lệ của hợp đồng và phát hiện chu trình DAG.
 * `tests/unit/test_agy_adapter.py`: Kiểm thử headless flags, stream-json parsing, taxonomy phân loại lỗi.
 * `tests/unit/test_workspace.py`: Kiểm thử cô lập đường dẫn, retry `WinError 32`, snapshot timing.
 * `tests/unit/test_orchestrator.py`: Kiểm thử vòng lặp điều phối DAG 2 tác vụ và tự động failover khi quota cạn.
@@ -149,36 +204,90 @@ $env:PYTHONPATH="src"; python -m unittest discover -s tests -p "test_*.py"
 
 ## 🎮 Antigravity Controller (`agy-controller`)
 
-Trình điều khiển và giao diện động tương tác (TUI) quản lý session cá nhân:
+Trình điều khiển và giao diện động tương tác (TUI) quản lý session cá nhân và cấu hình môi trường:
 
 ```cmd
-:: Mở giao diện TUI tương tác
+:: Mở giao diện TUI tương tác (phím mũi tên, Enter để chuyển tài khoản)
 agy-controller
 
-:: Liệt kê tài khoản
+:: Liệt kê danh sách tài khoản kèm Model, Effort và Mode
 agy-controller list
 
-:: Kiểm tra trạng thái xác thực toàn bộ tài khoản (bảng trực quan)
-agy-controller check-all
-:: hoặc
-agy-controller check
-
-:: Kiểm tra sâu & tự động refresh token cho 1 tài khoản cụ thể
-agy-controller check 1
-agy-controller check toanphucnguyena1
-
-:: Chuyển đổi tài khoản nhanh
+:: Chuyển đổi nhanh sang tài khoản số 2 (hoặc theo tên/email)
 agy-controller switch 2
 
-:: Chạy song song nhiều worker với bảo vệ chống xung đột Windows Credential Manager
-agy-controller run-many -w 1 "Prompt worker 1" -w 2 "Prompt worker 2"
+:: Cấu hình Model, Effort và Turbo Mode cho tài khoản cụ thể
+agy-controller config 1 --model claude-sonnet-4-6 --effort high --mode turbo
+
+:: Chạy song song nhiều worker với cơ chế Staggered Startup chống xung đột Credential Manager
+agy-controller run-many -w 1 "Viết file auth.py" -w 2 "Viết file test_auth.py"
 ```
 
-### Ký hiệu trạng thái Token (`agy-controller check`):
-| Ký hiệu | Màu sắc | Ý nghĩa |
-| :---: | :---: | :--- |
-| `+` | Xanh lá | **VALID**: Access Token còn hạn và sẵn sàng thực thi ngay lập tức. |
-| `!` | Vàng | **NEED_REFRESH**: Access Token hết hạn, có sẵn Refresh Token (tự động làm mới khi chạy hoặc qua `check <STT>`). |
-| `-` | Đỏ | **EXPIRED / NO_TOKEN**: Hết hạn hoàn toàn hoặc thiếu Refresh Token (Cần chạy `agy-controller login <tên>`). |
-| `#` | Tím | **COOLDOWN**: Tài khoản đang bị giới hạn hạn ngạch (Quota Rate Limit) trong SQLite. |
+---
+
+## 🔍 Kiểm tra tình trạng xác thực tài khoản (`check` & `check-all`)
+
+### Vì sao cần tính năng này?
+1. **Chu kỳ sống của Google OAuth**: `access_token` có hiệu lực trong **1 giờ (3600s)**, trong khi `refresh_token` được lưu bền vững trên máy để tự động cấp mới `access_token` trong ~1 giây khi chạy lệnh `agy`.
+2. **Hiện tượng hiểu lầm "Hết hạn"**: Nếu gọi `agy` độc lập mà Credential Manager chưa tải đúng session của tài khoản đó, Google CLI sẽ báo `Authentication required...` khiến người dùng lầm tưởng token đã mất.
+3. **Phát hiện sự cố sớm**: Kiểm tra trước xem Refresh Token có bị Google thu hồi (hết hạn 7 ngày / đổi mật khẩu) hay tài khoản có đang bị dính hạn ngạch (Quota Cooldown) trước khi khởi chạy các đợt điều phối song song lớn.
+
+### 1. Kiểm tra tổng quan toàn bộ tài khoản (`check-all` hoặc `check`)
+```cmd
+agy-controller check-all
+:: hoặc gõ ngắn gọn:
+agy-controller check
+```
+
+**Kết quả hiển thị trực quan:**
+```text
+Bảng trạng thái xác thực tài khoản Antigravity:
+
+┌─────┬──────────────────┬─────────────────────────────────────┬────────────────────────────┬────────────────────────────┐
+│ STT │    Tài khoản     │                Email                │      Tình trạng Token      │          Kết luận          │
+├─────┼──────────────────┼─────────────────────────────────────┼────────────────────────────┼────────────────────────────┤
+│ 1*  │ default          │ phucnguyentenda@gmail.com           │ + Còn hạn (0h 59m)         │ Sẵn sàng                   │
+│  2  │ n23dccn115       │ n23dccn115@student.ptithcm.edu.vn   │ ! Cần refresh (có sẵn RT)  │ Sẵn sàng (Auto-refresh)    │
+│  3  │ phucnguyentenda  │ phucnguyentenda@gmail.com           │ ! Cần refresh (có sẵn RT)  │ Sẵn sàng (Auto-refresh)    │
+│  4  │ toanphucnguyena1 │ toanphucnguyena1@gmail.com          │ ! Cần refresh (có sẵn RT)  │ Sẵn sàng (Auto-refresh)    │
+│  5  │ toanphucnguyena2 │ toanphucnguyena2@gmail.com          │ ! Cần refresh (có sẵn RT)  │ Sẵn sàng (Auto-refresh)    │
+│  6  │ toanphucnguyena3 │ toanphucnguyena3@gmail.com          │ ! Cần refresh (có sẵn RT)  │ Sẵn sàng (Auto-refresh)    │
+└─────┴──────────────────┴─────────────────────────────────────┴────────────────────────────┴────────────────────────────┘
+
+  *         : Tài khoản đang kích hoạt (Active)
+  + (Xanh lá) : Access Token còn hạn, sẵn sàng
+  ! (Vàng)    : Access Token hết hạn, có sẵn Refresh Token (tự động làm mới khi chạy)
+  - (Đỏ)      : Hết hạn hoàn toàn / Thiếu token (Cần: agy-controller login <tên>)
+  # (Tím)     : Đang trong thời gian cooldown hạn ngạch (Quota Limit)
+
+  Kiểm tra sâu & tự động refresh: agy-controller check <STT hoặc Tên>
+```
+
+### 2. Kiểm tra sâu & Tự động Refresh Token (`check <STT / Tên>`)
+Khi muốn làm mới ngay lập tức một tài khoản cụ thể mà không cần chờ tới lúc chạy tác vụ:
+
+```cmd
+:: Kiểm tra theo số thứ tự (STT)
+agy-controller check 1
+
+:: Kiểm tra theo tên profile
+agy-controller check toanphucnguyena1
+```
+
+**Cơ chế hoạt động:**
+* Tự động khóa luồng với `CredentialSwitchLock` để tránh tranh chấp Windows Credential Manager.
+* Tạm lưu phiên hiện tại và nạp profile chỉ định vào `gemini:antigravity`.
+* Gửi yêu cầu Live Probe `agy -p ping` tới Google CLI.
+* Nếu thành công: đọc `access_token` mới nhất, cập nhật file profile JSON trên đĩa (kéo dài thêm 1 giờ hạn dùng) và khôi phục lại tài khoản ban đầu cho hệ thống.
+* Nếu Google trả về lỗi `invalid_grant` hoặc `authentication required`: thông báo tài khoản cần đăng nhập lại với `agy-controller login <tên>`.
+
+### 3. Bảng giải thích chi tiết ký hiệu trạng thái:
+
+| Ký hiệu | Màu sắc | Trạng thái kỹ thuật | Ý nghĩa & Hành động xử lý |
+| :---: | :---: | :--- | :--- |
+| **`+`** | Xanh lá | **VALID** (Sẵn sàng) | Access Token còn hạn sử dụng. Sẵn sàng thực thi lệnh và tác vụ ngay tức thì. |
+| **`!`** | Vàng | **NEED_REFRESH** (Tự động) | Access Token đã quá 1 giờ nhưng có sẵn Refresh Token hợp lệ. Khi khởi chạy tác vụ hoặc chạy `check <STT>`, hệ thống sẽ tự động silent-refresh thành `+` trong 1 giây mà **không cần người dùng can thiệp**. |
+| **`-`** | Đỏ | **EXPIRED / NO_TOKEN** (Hết hạn) | Không tìm thấy Refresh Token hoặc token đã bị Google vô hiệu hóa (do đổi pass/thu hồi/quá 7 ngày đối với app thử nghiệm). Cần chạy: `agy-controller login <tên_profile>` để đăng nhập lại qua trình duyệt. |
+| **`#`** | Tím | **COOLDOWN** (Hạn ngạch) | Tài khoản đang trong thời gian hạ nhiệt hạn ngạch (Quota Rate Limit) được theo dõi tự động bởi SQLite WAL. Không nên gán tác vụ mới cho tới khi hết thời gian cooldown. |
+
 
