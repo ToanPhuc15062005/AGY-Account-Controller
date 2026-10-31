@@ -203,6 +203,10 @@ def main():
     o_start.add_argument("--accounts", help="Comma-separated candidate accounts")
     o_start.add_argument("--concurrency", type=int, default=4)
 
+    if len(sys.argv) <= 1:
+        parser.print_help()
+        sys.exit(0)
+
     args = parser.parse_args()
     ctx = init_mas()
 

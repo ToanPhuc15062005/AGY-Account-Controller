@@ -1514,7 +1514,7 @@ def get_best_bin_dir() -> Path:
     return gemini_bin
 
 def cmd_install(args):
-    """Install unified agy-controller into user's PATH directory and clean up legacy wrappers."""
+    """Install unified agy-controller and agy-mas into user's PATH directory and clean up legacy wrappers."""
     bin_dirs = [get_best_bin_dir(), Path.home() / ".gemini" / "antigravity-cli" / "bin"]
     unique_dirs = []
     for d in bin_dirs:
@@ -1522,6 +1522,8 @@ def cmd_install(args):
             unique_dirs.append(d)
 
     script_path = Path(__file__).resolve()
+    project_dir = script_path.parent
+    src_dir = project_dir / "src"
 
     # Legacy files to clean up
     legacy_files = ["agy-acc.cmd", "agy-acc.ps1", "agy-switch.cmd", "agy-switch.ps1", "agy-run.cmd", "agy-run.ps1"]
@@ -1534,20 +1536,33 @@ def cmd_install(args):
             if old_f.exists():
                 old_f.unlink()
 
+        # Install agy-controller
         (bin_dir / "agy-controller.cmd").write_text(f'@echo off\npython "{script_path}" %*\n', encoding="utf-8")
         (bin_dir / "agy-controller.ps1").write_text(f'& python "{script_path}" @args\n', encoding="utf-8")
 
-    print_success("Đã cài đặt thống nhất lệnh 'agy-controller' vào các thư mục PATH:")
+        # Install agy-mas
+        (bin_dir / "agy-mas.cmd").write_text(
+            f'@echo off\nset PYTHONPATH={src_dir};%PYTHONPATH%\npython -m agy_mas.cli.main %*\n',
+            encoding="utf-8"
+        )
+        (bin_dir / "agy-mas.ps1").write_text(
+            f'$env:PYTHONPATH = "{src_dir};$env:PYTHONPATH"\n& python -m agy_mas.cli.main @args\n',
+            encoding="utf-8"
+        )
+
+    print_success("Đã cài đặt thống nhất lệnh 'agy-controller' và 'agy-mas' vào các thư mục PATH:")
     for d in unique_dirs:
         print(f"  Thư mục: {d}")
-    print(f"\nLệnh khả dụng duy nhất: {Style.BOLD}{Style.CYAN}agy-controller{Style.RESET}")
-    print(f"Bạn có thể gõ {Style.CYAN}agy-controller{Style.RESET} ở bất kỳ đâu trong CMD hoặc PowerShell để mở giao diện điều khiển!\n")
+    print(f"\nCác lệnh khả dụng toàn hệ thống:")
+    print(f"  - {Style.BOLD}{Style.CYAN}agy-controller{Style.RESET} : Quản lý đa tài khoản, cấu hình và TUI")
+    print(f"  - {Style.BOLD}{Style.CYAN}agy-mas{Style.RESET}        : Hệ thống điều phối Multi-Agent System (Architecture v1.1)\n")
 
 def cmd_uninstall(args):
     """Remove CLI wrappers from user's agy bin folder."""
     bin_dirs = [get_best_bin_dir(), Path.home() / ".gemini" / "antigravity-cli" / "bin"]
     files = [
         "agy-controller.cmd", "agy-controller.ps1",
+        "agy-mas.cmd", "agy-mas.ps1",
         "agy-acc.cmd", "agy-acc.ps1",
         "agy-switch.cmd", "agy-switch.ps1",
         "agy-run.cmd", "agy-run.ps1"
