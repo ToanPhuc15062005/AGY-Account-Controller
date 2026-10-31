@@ -105,7 +105,7 @@ agy-mas run "Xây dựng REST API backend với FastAPI kết nối PostgreSQL v
 agy-mas run "Xây dựng hệ thống Authentication và thanh toán Stripe" ^
     --name "Auth & Payment System" ^
     --workspace "C:\projects\my-ecommerce" ^
-    --accounts default,toanphucnguyena1,toanphucnguyena2,n23dccn115 ^
+    --accounts default,account1,account2,account3 ^
     --concurrency 3 ^
     --model gemini-3.8-flash
 ```
@@ -226,7 +226,7 @@ agy-mas task list proj_pay
 #### 4. Khởi chạy điều phối Multi-Agent (`orchestrate`)
 ```cmd
 :: Bắt đầu điều phối dự án với danh sách tài khoản xoay vòng và giới hạn 3 agent song song
-agy-mas orchestrate start proj_pay --accounts default,toanphucnguyena1,toanphucnguyena2 --concurrency 3
+agy-mas orchestrate start proj_pay --accounts default,account1,account2 --concurrency 3
 ```
 
 #### 5. Giám sát hạn ngạch & tài nguyên (`resource`)
@@ -300,12 +300,12 @@ Bảng trạng thái xác thực tài khoản Antigravity:
 ┌─────┬──────────────────┬─────────────────────────────────────┬────────────────────────────┬────────────────────────────┐
 │ STT │    Tài khoản     │                Email                │      Tình trạng Token      │          Kết luận          │
 ├─────┼──────────────────┼─────────────────────────────────────┼────────────────────────────┼────────────────────────────┤
-│ 1*  │ default          │ phucnguyentenda@gmail.com           │ + Còn hạn (0h 59m)         │ Sẵn sàng                   │
-│  2  │ n23dccn115       │ n23dccn115@student.ptithcm.edu.vn   │ ! Cần refresh (có sẵn RT)  │ Sẵn sàng (Auto-refresh)    │
-│  3  │ phucnguyentenda  │ phucnguyentenda@gmail.com           │ ! Cần refresh (có sẵn RT)  │ Sẵn sàng (Auto-refresh)    │
-│  4  │ toanphucnguyena1 │ toanphucnguyena1@gmail.com          │ ! Cần refresh (có sẵn RT)  │ Sẵn sàng (Auto-refresh)    │
-│  5  │ toanphucnguyena2 │ toanphucnguyena2@gmail.com          │ ! Cần refresh (có sẵn RT)  │ Sẵn sàng (Auto-refresh)    │
-│  6  │ toanphucnguyena3 │ toanphucnguyena3@gmail.com          │ ! Cần refresh (có sẵn RT)  │ Sẵn sàng (Auto-refresh)    │
+│ 1*  │ default          │ example@gmail.com                   │ + Còn hạn (0h 59m)         │ Sẵn sàng                   │
+│  2  │ account1         │ example1@gmail.com                  │ ! Cần refresh (có sẵn RT)  │ Sẵn sàng (Auto-refresh)    │
+│  3  │ account2         │ example2@gmail.com                  │ ! Cần refresh (có sẵn RT)  │ Sẵn sàng (Auto-refresh)    │
+│  4  │ account3         │ example3@gmail.com                  │ ! Cần refresh (có sẵn RT)  │ Sẵn sàng (Auto-refresh)    │
+│  5  │ account4         │ example4@gmail.com                  │ ! Cần refresh (có sẵn RT)  │ Sẵn sàng (Auto-refresh)    │
+│  6  │ account5         │ example5@gmail.com                  │ ! Cần refresh (có sẵn RT)  │ Sẵn sàng (Auto-refresh)    │
 └─────┴──────────────────┴─────────────────────────────────────┴────────────────────────────┴────────────────────────────┘
 
   *         : Tài khoản đang kích hoạt (Active)
@@ -325,7 +325,7 @@ Khi muốn làm mới ngay lập tức một tài khoản cụ thể mà không 
 agy-controller check 1
 
 :: Kiểm tra theo tên profile
-agy-controller check toanphucnguyena1
+agy-controller check account1
 ```
 
 **Cơ chế hoạt động:**
