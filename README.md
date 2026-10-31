@@ -91,7 +91,8 @@ Thoát chương trình và xóa màn hình console (`cls`).
 | `agy-controller list` | In bảng danh sách tài khoản ra console |
 | `agy-controller <STT>` *(VD: `agy-controller 2`)* | Chuyển tài khoản cực nhanh theo số STT |
 | `agy-controller switch <STT/Tên>` | Chuyển tài khoản đang kích hoạt |
-| `agy-controller run [STT] [cấu hình] [args]` | Chạy `agy`, tự động lưu cấu hình nếu đổi `--mode`, `--model`, `--effort` |
+| `agy-controller run [STT] [cấu hình] [args]` | Chạy `agy`, tự động lưu cấu hình nếu đổi `--mode`, `--model`, `--effort` (bảo vệ chống xung đột đồng thời) |
+| `agy-controller run-many ...` | Chạy song song nhiều worker/tài khoản với Staggered Startup (0.4s) |
 | `agy-controller config <STT> [cấu hình]` | Cập nhật cấu hình riêng cho tài khoản qua dòng lệnh |
 | `agy-controller login [tên]` | Đăng nhập tài khoản Google mới và lưu profile |
 | `agy-controller logout` | Đăng xuất an toàn khỏi Credential Manager |

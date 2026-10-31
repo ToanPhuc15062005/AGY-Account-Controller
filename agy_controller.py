@@ -13,6 +13,7 @@ import argparse
 import re
 import shutil
 import subprocess
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -70,6 +71,67 @@ CREDENTIAL_USER = "antigravity"
 PROFILES_DIR = Path.home() / ".gemini" / "agy-profiles"
 CURRENT_PROFILE_FILE = PROFILES_DIR / ".current_profile"
 SETTINGS_FILE = Path.home() / ".gemini" / "antigravity-cli" / "settings.json"
+AUTH_LOCK_FILE = PROFILES_DIR / ".auth_switch.lock"
+
+# Mutex / File lock for safe concurrent credential switching
+class CredentialSwitchLock:
+    """Inter-process lock to prevent race conditions during credential switching."""
+    def __init__(self, lock_file: Path = AUTH_LOCK_FILE, timeout: float = 30.0):
+        self.lock_file = lock_file
+        self.timeout = timeout
+        self.handle = None
+
+    def acquire(self):
+        ensure_profiles_dir()
+        start = time.time()
+        while True:
+            try:
+                # Exclusive file creation acts as a clean atomic lock on Windows & POSIX
+                if os.name == "nt":
+                    import msvcrt
+                    self.handle = open(self.lock_file, "a+b")
+                    msvcrt.locking(self.handle.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    self.handle = open(self.lock_file, "a+b")
+                    fcntl.flock(self.handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return True
+            except (IOError, OSError, BlockingIOError):
+                if self.handle:
+                    try:
+                        self.handle.close()
+                    except Exception:
+                        pass
+                    self.handle = None
+                if time.time() - start > self.timeout:
+                    raise TimeoutError("Hết thời gian chờ khóa đồng bộ Credential Manager.")
+                time.sleep(0.05)
+
+    def release(self):
+        if self.handle:
+            try:
+                if os.name == "nt":
+                    import msvcrt
+                    self.handle.seek(0)
+                    msvcrt.locking(self.handle.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(self.handle, fcntl.LOCK_UN)
+            except Exception:
+                pass
+            finally:
+                try:
+                    self.handle.close()
+                except Exception:
+                    pass
+                self.handle = None
+
+    def __enter__(self):
+        self.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
 
 DEFAULT_MODEL = "gemini-3.8-flash"
 DEFAULT_EFFORT = "medium"
@@ -933,12 +995,13 @@ def cmd_switch(args):
         print_error("Dữ liệu session trong profile rỗng.")
         sys.exit(1)
 
-    success = write_current_session(session)
-    if not success:
-        print_error("Không thể ghi thông tin vào Windows Credential Manager.")
-        sys.exit(1)
+    with CredentialSwitchLock():
+        success = write_current_session(session)
+        if not success:
+            print_error("Không thể ghi thông tin vào Windows Credential Manager.")
+            sys.exit(1)
 
-    set_active_profile_name(profile_name)
+        set_active_profile_name(profile_name)
     email = session.get("id_token_email", meta.get("email", "Unknown"))
     model, effort = normalize_model_and_effort(meta.get("model"), meta.get("effort"))
     mode = meta.get("mode", DEFAULT_MODE)
@@ -958,7 +1021,7 @@ def cmd_switch(args):
 
 def cmd_run(args):
     """Run agy with the active or specified profile's configured model, effort, and mode.
-    If --model, --effort, or --mode are provided, saves them to the profile first.
+    Uses CredentialSwitchLock to serialize authentication and delay until agy reads credentials.
     """
     target = None
     if hasattr(args, "extra_args") and args.extra_args:
@@ -971,26 +1034,12 @@ def cmd_run(args):
     # Determine profile path
     if target:
         profile_path, stt = resolve_profile(target)
-        if get_active_profile_name() != profile_path.stem:
-            try:
-                data = json.loads(profile_path.read_text(encoding="utf-8"))
-                session = data.get("session", {})
-                write_current_session(session)
-                set_active_profile_name(profile_path.stem)
-                print_info(f"Đã chuyển sang [{stt}] '{profile_path.stem}'")
-            except Exception as e:
-                print_error(f"Lỗi khi chuyển tài khoản: {e}")
-                sys.exit(1)
     else:
         active_name = get_active_profile_name()
         if not active_name:
             profiles = get_sorted_profiles()
             if profiles:
                 profile_path = profiles[0]
-                set_active_profile_name(profile_path.stem)
-                data = json.loads(profile_path.read_text(encoding="utf-8"))
-                write_current_session(data.get("session", {}))
-                print_info(f"Tự động chọn tài khoản đầu tiên: '{profile_path.stem}'")
             else:
                 print_error("Chưa có tài khoản nào được lưu. Hãy đăng nhập với 'agy-controller login' trước.")
                 sys.exit(1)
@@ -1050,12 +1099,145 @@ def cmd_run(args):
     print_info(f"Chạy agy: Tài khoản={Style.CYAN}{profile_path.stem}{Style.RESET} | Model={model} | Effort={effort} | Mode={mode_note}")
     print(f"{Style.DIM}Lệnh thực thi: {' '.join(cmd_args)}{Style.RESET}\n")
 
+    # Safe execution with inter-process lock & startup delay
     try:
-        subprocess.run(cmd_args, shell=(os.name == "nt"))
+        with CredentialSwitchLock():
+            session = data.get("session", {})
+            write_current_session(session)
+            set_active_profile_name(profile_path.stem)
+            
+            # Khởi chạy tiến trình agy
+            proc = subprocess.Popen(cmd_args, shell=(os.name == "nt"))
+            # Delay an toàn 0.4s để agy khởi động và nạp token từ Credential Manager vào RAM
+            time.sleep(0.4)
+            
+        # Ra khỏi block 'with', lock được giải phóng ngay lập tức cho các lệnh gọi khác!
+        return_code = proc.wait()
+        sys.exit(return_code)
     except KeyboardInterrupt:
         pass
     except Exception as e:
         print_error(f"Không thể khởi chạy agy: {e}")
+        sys.exit(1)
+
+
+def cmd_run_many(args):
+    """Run agy on multiple accounts concurrently with staggered startup delay.
+    Supports either:
+      1) --prompt "<shared_prompt>" with multiple accounts (--accounts 1,2,3)
+      2) --worker <account> "<prompt>" (repeated multiple times)
+    """
+    agy_binary = shutil.which("agy") or "agy"
+    tasks = []  # list of (account_target, prompt_text)
+
+    # Mode 1: Repeated --worker target prompt
+    if args.worker:
+        for item in args.worker:
+            # item is a tuple/list [target, prompt]
+            tasks.append((item[0], item[1]))
+
+    # Mode 2: --accounts 1,2,3 --prompt "some text"
+    elif args.accounts and args.prompt:
+        targets = [t.strip() for t in args.accounts.split(",") if t.strip()]
+        for target in targets:
+            tasks.append((target, args.prompt))
+
+    elif args.accounts and hasattr(args, "extra_args") and args.extra_args:
+        prompt_text = " ".join(args.extra_args)
+        targets = [t.strip() for t in args.accounts.split(",") if t.strip()]
+        for target in targets:
+            tasks.append((target, prompt_text))
+
+    if not tasks:
+        print_error("Không có nhiệm vụ nào được chỉ định.")
+        print("\nCách dùng:")
+        print("  1. Dùng chung 1 prompt cho nhiều tài khoản:")
+        print("     agy-controller run-many --accounts 1,2,3 --prompt \"Giải thích Transformer\"")
+        print("  2. Chỉ định từng worker và nhiệm vụ riêng:")
+        print("     agy-controller run-many -w 1 \"Tạo FastAPI router\" -w 2 \"Viết giao diện UI\"")
+        sys.exit(1)
+
+    print_info(f"Bắt đầu khởi chạy song song {len(tasks)} tiến trình agy với Staggered Startup...")
+
+    processes = []
+    for idx, (target, prompt_text) in enumerate(tasks, start=1):
+        profile_path, stt = resolve_profile(target)
+        if not profile_path or not profile_path.exists():
+            print_error(f"[{idx}/{len(tasks)}] Không tìm thấy tài khoản '{target}', bỏ qua.")
+            continue
+
+        try:
+            p_data = json.loads(profile_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            print_error(f"[{idx}/{len(tasks)}] Lỗi đọc profile '{profile_path.stem}': {e}")
+            continue
+
+        p_meta = p_data.get("_meta", {})
+        m, ef = normalize_model_and_effort(p_meta.get("model"), p_meta.get("effort"))
+        mo = p_meta.get("mode", DEFAULT_MODE)
+
+        # Build command line for this worker
+        # By default run non-interactively with --print to capture stream cleanly
+        cmd_args = [agy_binary]
+        if m:
+            cmd_args.extend(["--model", m])
+        if ef:
+            cmd_args.extend(["--effort", ef])
+        if mo.lower() == "turbo":
+            cmd_args.append("--dangerously-skip-permissions")
+
+        # Non-interactive print prompt
+        cmd_args.extend(["-p", prompt_text])
+
+        # Safely acquire lock, swap credential, start process, then delay 0.4s to let it read key
+        with CredentialSwitchLock():
+            write_current_session(p_data.get("session", {}))
+            set_active_profile_name(profile_path.stem)
+            print(f"  {Style.GREEN}▶{Style.RESET} Khởi chạy [{stt}] {Style.CYAN}{profile_path.stem}{Style.RESET} (Model: {m}, Effort: {ef})...")
+            
+            # Start process
+            proc = subprocess.Popen(
+                cmd_args,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
+                shell=(os.name == "nt")
+            )
+            # Give agy ~0.4s to load Windows Credential into RAM before allowing next switch
+            time.sleep(0.4)
+
+        processes.append((profile_path.stem, proc))
+
+    print_success(f"Tất cả {len(processes)} tiến trình agy đã khởi động và đang chạy song song 100%!\n")
+
+    # Read output asynchronously with profile prefix
+    import threading
+
+    def stream_output(name: str, p: subprocess.Popen):
+        prefix = f"[{Style.CYAN}{name}{Style.RESET}] "
+        if p.stdout:
+            for line in iter(p.stdout.readline, ""):
+                if line:
+                    sys.stdout.write(f"{prefix}{line}")
+                    sys.stdout.flush()
+            p.stdout.close()
+
+    threads = []
+    for name, p in processes:
+        t = threading.Thread(target=stream_output, args=(name, p))
+        t.daemon = True
+        t.start()
+        threads.append((t, p))
+
+    for t, p in threads:
+        p.wait()
+        t.join()
+
+    print()
+    print_success("Tất cả các worker đã hoàn thành nhiệm vụ.")
 
 
 def cmd_config(args):
@@ -1415,6 +1597,13 @@ def main():
     p_run.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], help="Cập nhật Effort")
     p_run.add_argument("--mode", choices=["normal", "turbo"], help="Cập nhật Mode: normal hoặc turbo (--dangerously-skip-permissions)")
     p_run.set_defaults(func=cmd_run)
+
+    # run-many
+    p_run_many = subparsers.add_parser("run-many", help="Chạy song song nhiều worker/tài khoản với Staggered Startup")
+    p_run_many.add_argument("-w", "--worker", nargs=2, action="append", metavar=("ACCOUNT", "PROMPT"), help="Chỉ định worker và prompt riêng (có thể lặp lại: -w 1 'prompt1' -w 2 'prompt2')")
+    p_run_many.add_argument("-a", "--accounts", help="Danh sách STT hoặc tên tài khoản phân tách bằng dấu phẩy (VD: 1,2,3)")
+    p_run_many.add_argument("-p", "--prompt", help="Prompt dùng chung cho các tài khoản chỉ định bởi --accounts")
+    p_run_many.set_defaults(func=cmd_run_many)
 
     # config
     p_cfg = subparsers.add_parser("config", aliases=["cfg", "set"], help="Cấu hình Model, Effort, Mode cho tài khoản")
