@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 agy-controller
-Unified controller for Google Antigravity CLI (agy).
+Unified controller and interactive TUI for Google Antigravity CLI (agy).
 Manages multi-account authentication, profile configurations (Model, Effort, Turbo Mode),
 and execution workflows for Windows (CMD & PowerShell).
 """
@@ -74,6 +74,56 @@ SETTINGS_FILE = Path.home() / ".gemini" / "antigravity-cli" / "settings.json"
 DEFAULT_MODEL = "Gemini 3.8 Flash (Medium)"
 DEFAULT_EFFORT = "-"
 DEFAULT_MODE = "normal"
+
+AVAILABLE_MODELS = [
+    "Gemini 3.8 Flash (Medium)",
+    "Gemini 3.8 Flash (High)",
+    "Gemini 3.8 Flash (Low)",
+    "Claude Sonnet 4.6 (Thinking)",
+    "Claude Opus 4.6 (Thinking)",
+    "GPT-OSS 120B (Medium)"
+]
+
+AVAILABLE_EFFORTS = [
+    "-",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max"
+]
+
+AVAILABLE_MODES = [
+    "normal",
+    "turbo"
+]
+
+TUI_BUTTONS = ["Refresh", "Add", "Edit", "Search", "Delete", "Exit"]
+
+
+# ---------------------------------------------------------------------------
+# Windows Keyboard Input Handling (msvcrt)
+# ---------------------------------------------------------------------------
+if os.name == "nt":
+    import msvcrt
+
+    def read_input_key():
+        ch = msvcrt.getwch()
+        if ch in ('\x00', '\xe0'):
+            ch2 = msvcrt.getwch()
+            if ch2 == 'H': return 'UP'
+            if ch2 == 'P': return 'DOWN'
+            if ch2 == 'K': return 'LEFT'
+            if ch2 == 'M': return 'RIGHT'
+            return 'EXT_' + ch2
+        if ch == '\r': return 'ENTER'
+        if ch == '\x1b': return 'ESC'
+        if ch == '\x08': return 'BACKSPACE'
+        if ch == '\t': return 'TAB'
+        return ch
+else:
+    def read_input_key():
+        return sys.stdin.read(1)
 
 
 # ---------------------------------------------------------------------------
@@ -274,7 +324,504 @@ def resolve_profile(target_str: str) -> tuple[Path | None, int | None]:
 
 
 # ---------------------------------------------------------------------------
-# Subcommands
+# View Formats (Mẫu 1 & Mẫu 2 & Dynamic Table)
+# ---------------------------------------------------------------------------
+def format_account_details(profile_path: Path) -> list[str]:
+    """Mẫu hiển thị 1: Chi tiết tài khoản."""
+    try:
+        data = json.loads(profile_path.read_text(encoding="utf-8"))
+        session = data.get("session", {})
+        meta = data.get("_meta", {})
+        email = session.get("id_token_email", meta.get("email", "Unknown"))
+        model = meta.get("model", DEFAULT_MODEL)
+        effort = meta.get("effort", DEFAULT_EFFORT)
+        mode = meta.get("mode", DEFAULT_MODE)
+        token = session.get("token", {})
+        expiry_str = token.get("expiry")
+        has_refresh = bool(token.get("refresh_token"))
+        _, expiry_status = parse_expiry(expiry_str)
+        mode_display = "turbo (dangerously-skip-permissions)" if mode == "turbo" else "normal"
+
+        return [
+            f"Tên Profile    : {profile_path.stem}",
+            f"\tGoogle Email   : {email}",
+            f"\tModel          : {model}",
+            f"\tEffort         : {effort}",
+            f"\tMode           : {mode_display}",
+            f"\tAccess Token   : {expiry_status}",
+            f"\tRefresh Token  : {'Có sẵn ✓' if has_refresh else 'Thiếu ✗'}",
+            f"\tLưu trữ        : {CREDENTIAL_TARGET}"
+        ]
+    except Exception as e:
+        return [f"  Lỗi đọc profile: {e}"]
+
+def format_search_box(query: str) -> list[str]:
+    """Mẫu hiển thị 2: Dòng nhập tìm kiếm Gmail/Tên."""
+    line = "─" * 61
+    return [
+        f"{line}",
+        f"> {query}",
+        f"{line}"
+    ]
+
+def build_table_lines(profiles: list[Path], active_profile_name: str | None, active_email: str | None, selected_idx: int | None = None, is_row_focused: bool = False) -> list[str]:
+    """Tạo bảng động STT, Tài khoản, Model, Effort, Mode."""
+    if not profiles:
+        return ["  [Chưa có tài khoản nào phù hợp]"]
+
+    headers = ["STT", "Tài khoản", "Model", "Effort", "Mode"]
+    rows = []
+
+    for i, p in enumerate(profiles, start=1):
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            session = data.get("session", {})
+            meta = data.get("_meta", {})
+            email = session.get("id_token_email", meta.get("email", "Unknown"))
+            model = meta.get("model", DEFAULT_MODEL)
+            effort = meta.get("effort", DEFAULT_EFFORT)
+            mode = meta.get("mode", DEFAULT_MODE)
+
+            is_active = (p.stem == active_profile_name) or (email == active_email and not active_profile_name)
+            is_cursor = (selected_idx is not None and (i - 1) == selected_idx)
+            
+            # Format STT with cursor indicator
+            base_stt = f"{i}*" if is_active else str(i)
+            if is_cursor and is_row_focused:
+                stt_str = f"> {base_stt}"
+            else:
+                stt_str = f"  {base_stt}"
+
+            if is_active:
+                stt_display = f"{Style.GREEN}{Style.BOLD}{stt_str:>5}{Style.RESET}"
+            else:
+                stt_display = f"{stt_str:>5}"
+
+            # Format Account
+            acc_raw = f"{p.stem} ({email})"
+            if is_cursor and is_row_focused:
+                acc_display = f"{Style.CYAN}{Style.BOLD}{acc_raw}{Style.RESET}"
+            elif is_active:
+                acc_display = f"{Style.GREEN}{acc_raw}{Style.RESET}"
+            else:
+                acc_display = acc_raw
+
+            # Format Model
+            model_display = f"{Style.WHITE}{model}{Style.RESET}"
+
+            # Format Effort
+            effort_display = f"{Style.CYAN}{effort}{Style.RESET}"
+
+            # Format Mode
+            if mode.lower() == "turbo":
+                mode_display = f"{Style.YELLOW}{Style.BOLD}turbo{Style.RESET} {Style.DIM}(skip-perm){Style.RESET}"
+            else:
+                mode_display = f"{Style.DIM}normal{Style.RESET}"
+
+            rows.append({
+                "stt": stt_display,
+                "acc": acc_display,
+                "model": model_display,
+                "effort": effort_display,
+                "mode": mode_display,
+                "is_active": is_active,
+                "is_cursor": is_cursor
+            })
+        except Exception as e:
+            rows.append({
+                "stt": str(i),
+                "acc": f"{p.stem} [Lỗi: {e}]",
+                "model": "Unknown",
+                "effort": "Unknown",
+                "mode": "Unknown",
+                "is_active": False,
+                "is_cursor": False
+            })
+
+    # Calculate dynamic column widths based on maximum visible length
+    keys = ["stt", "acc", "model", "effort", "mode"]
+    widths = []
+    for h, k in zip(headers, keys):
+        max_v = len(h)
+        for r in rows:
+            max_v = max(max_v, visible_len(r[k]))
+        widths.append(max_v + 2)
+
+    top_border = "┌" + "┬".join("─" * w for w in widths) + "┐"
+    header_sep = "├" + "┼".join("─" * w for w in widths) + "┤"
+    bottom_border = "└" + "┴".join("─" * w for w in widths) + "┘"
+
+    header_cells = [pad_cell(f" {h} ", w, "center") for h, w in zip(headers, widths)]
+    header_line = "│" + "│".join(header_cells) + "│"
+
+    table_lines = [top_border, f"{Style.BOLD}{header_line}{Style.RESET}", header_sep]
+
+    for r in rows:
+        row_cells = [
+            pad_cell(f" {r['stt']} ", widths[0], "center"),
+            pad_cell(f" {r['acc']} ", widths[1], "left"),
+            pad_cell(f" {r['model']} ", widths[2], "left"),
+            pad_cell(f" {r['effort']} ", widths[3], "center"),
+            pad_cell(f" {r['mode']} ", widths[4], "left"),
+        ]
+        line = "│" + "│".join(row_cells) + "│"
+        if r["is_cursor"] and is_row_focused:
+            line = f"{Style.BOLD}{line}{Style.RESET}"
+        table_lines.append(line)
+
+    table_lines.append(bottom_border)
+    return table_lines
+
+
+# ---------------------------------------------------------------------------
+# Interactive TUI Engine
+# ---------------------------------------------------------------------------
+def run_interactive_tui():
+    """Giao diện động tương tác toàn diện cho agy-controller."""
+    state = "NAV"  # NAV, EDIT_ROW, EDIT_PROP, SEARCH, DELETE_ROW, DELETE_CONFIRM
+    active_btn_idx = 0
+    focus_area = "BUTTONS"  # "BUTTONS" or "TABLE"
+    selected_row_idx = 0
+    prop_idx = 0  # 0: Model, 1: Effort, 2: Mode
+    search_query = ""
+    status_message = ""
+
+    # Temporary properties for EDIT_PROP
+    edit_model = DEFAULT_MODEL
+    edit_effort = DEFAULT_EFFORT
+    edit_mode = DEFAULT_MODE
+    edit_profile_path = None
+
+    while True:
+        all_profiles = get_sorted_profiles()
+        current_session = get_current_session()
+        active_email = current_session.get("id_token_email") if current_session else None
+        active_profile_name = get_active_profile_name()
+
+        # Filter profiles in SEARCH mode
+        if state == "SEARCH" and search_query.strip():
+            q = search_query.strip().lower()
+            filtered_profiles = []
+            for p in all_profiles:
+                try:
+                    d = json.loads(p.read_text(encoding="utf-8"))
+                    em = d.get("session", {}).get("id_token_email", "")
+                    if q in p.stem.lower() or q in em.lower():
+                        filtered_profiles.append(p)
+                except Exception:
+                    pass
+        else:
+            filtered_profiles = all_profiles
+
+        # Clamp row index
+        if filtered_profiles:
+            selected_row_idx = max(0, min(selected_row_idx, len(filtered_profiles) - 1))
+        else:
+            selected_row_idx = 0
+
+        # Build Screen Buffer
+        out = []
+        out.append(f"\n{Style.BOLD}Antigravity Controller (agy-controller){Style.RESET}\n")
+
+        # Buttons Bar: [ Refresh ]  [ Add ]  [ Edit ]  [ Search ]  [ Delete ]  [ Exit ]
+        btn_strs = []
+        for i, b_name in enumerate(TUI_BUTTONS):
+            is_active_btn = (i == active_btn_idx)
+            btn_label = f"{i+1}. {b_name}"
+            if is_active_btn and (state == "NAV" and focus_area == "BUTTONS"):
+                btn_strs.append(f"{Style.BOLD}\033[7m[ {btn_label} ]\033[0m")
+            elif is_active_btn:
+                btn_strs.append(f"{Style.CYAN}{Style.BOLD}[ {btn_label} ]{Style.RESET}")
+            else:
+                btn_strs.append(f"[ {btn_label} ]")
+        out.append("  " + "   ".join(btn_strs) + "\n")
+
+        # Search Box (Mẫu hiển thị 2)
+        if state == "SEARCH":
+            out.extend(["  " + l for l in format_search_box(search_query)])
+            out.append("")
+
+        # Dynamic Table
+        is_row_focused = (focus_area == "TABLE") or (state in ("EDIT_ROW", "EDIT_PROP", "DELETE_ROW", "DELETE_CONFIRM"))
+        table_lines = build_table_lines(
+            filtered_profiles,
+            active_profile_name,
+            active_email,
+            selected_idx=selected_row_idx if filtered_profiles else None,
+            is_row_focused=is_row_focused
+        )
+        out.extend(table_lines)
+
+        # Status Notification
+        if status_message:
+            out.append(f"\n  {Style.GREEN}{status_message}{Style.RESET}")
+
+        # Context-dependent Footer & Editor
+        if state == "NAV":
+            if focus_area == "BUTTONS":
+                out.append(f"\n  {Style.DIM}[◄ ►]: Chọn nút  |  [▼]: Xuống duyệt bảng  |  [Enter]: Kích hoạt nút  |  [1-6]: Phím tắt{Style.RESET}")
+            else:
+                out.append(f"\n  {Style.DIM}[▲ ▼]: Duyệt tài khoản  |  [Enter]: Kích hoạt tài khoản  |  [Esc]: Lên hàng nút{Style.RESET}")
+
+        elif state == "EDIT_ROW":
+            out.append(f"\n  {Style.CYAN}{Style.BOLD}Chế độ Edit:{Style.RESET} Dùng {Style.BOLD}[▲ ▼]{Style.RESET} chọn tài khoản cần sửa, nhấn {Style.BOLD}[Enter]{Style.RESET} để cấu hình, {Style.BOLD}[Esc]{Style.RESET} để quay lại.")
+
+        elif state == "EDIT_PROP" and edit_profile_path and edit_profile_path.exists():
+            out.append(f"\n{Style.BOLD}Chi tiết tài khoản đang chọn:{Style.RESET}")
+            out.extend(format_account_details(edit_profile_path))
+            out.append(f"\n  {Style.DIM}" + "─" * 61 + f"{Style.RESET}")
+            out.append(f"  {Style.BOLD}Chọn thuộc tính cần cấu hình:{Style.RESET}")
+
+            p_model = f"◄ {edit_model} ►" if prop_idx == 0 else f"  {edit_model}"
+            p_effort = f"◄ {edit_effort} ►" if prop_idx == 1 else f"  {edit_effort}"
+            p_mode = f"◄ {edit_mode} ►" if prop_idx == 2 else f"  {edit_mode}"
+
+            m_ptr = f"{Style.GREEN}>{Style.RESET}" if prop_idx == 0 else " "
+            e_ptr = f"{Style.GREEN}>{Style.RESET}" if prop_idx == 1 else " "
+            o_ptr = f"{Style.GREEN}>{Style.RESET}" if prop_idx == 2 else " "
+
+            out.append(f"  {m_ptr} Model  : {Style.BOLD if prop_idx == 0 else Style.RESET}{p_model}{Style.RESET}")
+            out.append(f"  {e_ptr} Effort : {Style.BOLD if prop_idx == 1 else Style.RESET}{p_effort}{Style.RESET}")
+            out.append(f"  {o_ptr} Mode   : {Style.BOLD if prop_idx == 2 else Style.RESET}{p_mode}{Style.RESET}")
+            out.append(f"  {Style.DIM}" + "─" * 61 + f"{Style.RESET}")
+            out.append(f"  {Style.DIM}[▲ ▼]: Chọn thuộc tính  |  [◄ ►]: Chọn tham số  |  [Enter]: Lưu cấu hình  |  [Esc]: Quay lại duyệt bảng{Style.RESET}")
+
+        elif state == "SEARCH":
+            out.append(f"\n  {Style.DIM}[Gõ phím]: Tìm theo Gmail hoặc Tên  |  [▲ ▼]: Duyệt kết quả  |  [Enter]: Kích hoạt  |  [Esc]: Thoát tìm kiếm{Style.RESET}")
+
+        elif state == "DELETE_ROW":
+            out.append(f"\n  {Style.RED}{Style.BOLD}Chế độ Delete:{Style.RESET} Dùng {Style.BOLD}[▲ ▼]{Style.RESET} chọn tài khoản cần xóa, nhấn {Style.BOLD}[Enter]{Style.RESET} để xóa, {Style.BOLD}[Esc]{Style.RESET} để quay lại.")
+
+        elif state == "DELETE_CONFIRM" and filtered_profiles:
+            del_target = filtered_profiles[selected_row_idx]
+            out.append(f"\n  {Style.YELLOW}{Style.BOLD}⚠ XÁC NHẬN:{Style.RESET} Bạn có chắc chắn muốn xóa tài khoản '{Style.BOLD}{del_target.stem}{Style.RESET}' khỏi danh sách?")
+            out.append(f"  Nhấn {Style.GREEN}{Style.BOLD}[Y]{Style.RESET} để xác nhận xóa  |  Nhấn {Style.RED}{Style.BOLD}[N]{Style.RESET} hoặc {Style.BOLD}[Esc]{Style.RESET} để hủy bỏ.")
+
+        # Render screen at once
+        sys.stdout.write("\033[H\033[J" + "\n".join(out) + "\n")
+        sys.stdout.flush()
+
+        # Read key input
+        key = read_input_key()
+
+        # -------------------------------------------------------------
+        # Key Handling Logic
+        # -------------------------------------------------------------
+        if state == "NAV" and focus_area == "BUTTONS":
+            # Quick Hotkeys for Buttons
+            if key in ('1', 'r', 'R'):
+                status_message = "✓ Đã làm mới danh sách tài khoản!"
+                continue
+            elif key in ('2', 'a', 'A'):
+                script_path = Path(__file__).resolve()
+                subprocess.Popen(f'start "Antigravity Login" cmd /k "python \"{script_path}\" login"', shell=True)
+                status_message = "✓ Đã mở cửa sổ CMD mới để đăng nhập. Sau khi xong, nhấn Refresh [1] để cập nhật."
+                continue
+            elif key in ('3', 'e', 'E'):
+                state = "EDIT_ROW"
+                status_message = ""
+                continue
+            elif key in ('4', 's', 'S'):
+                state = "SEARCH"
+                search_query = ""
+                status_message = ""
+                continue
+            elif key in ('5', 'd', 'D'):
+                state = "DELETE_ROW"
+                status_message = ""
+                continue
+            elif key in ('6', 'x', 'X', 'q', 'Q'):
+                os.system('cls')
+                sys.exit(0)
+
+        if state == "NAV":
+            if focus_area == "BUTTONS":
+                if key == 'LEFT':
+                    active_btn_idx = (active_btn_idx - 1) % len(TUI_BUTTONS)
+                elif key == 'RIGHT':
+                    active_btn_idx = (active_btn_idx + 1) % len(TUI_BUTTONS)
+                elif key == 'DOWN':
+                    if filtered_profiles:
+                        focus_area = "TABLE"
+                        selected_row_idx = 0
+                elif key == 'ENTER':
+                    btn_name = TUI_BUTTONS[active_btn_idx]
+                    if btn_name == "Refresh":
+                        status_message = "✓ Đã làm mới danh sách tài khoản!"
+                    elif btn_name == "Add":
+                        script_path = Path(__file__).resolve()
+                        subprocess.Popen(f'start "Antigravity Login" cmd /k "python \"{script_path}\" login"', shell=True)
+                        status_message = "✓ Đã mở cửa sổ CMD mới để đăng nhập. Sau khi xong, nhấn Refresh [1] để cập nhật."
+                    elif btn_name == "Edit":
+                        state = "EDIT_ROW"
+                        status_message = ""
+                    elif btn_name == "Search":
+                        state = "SEARCH"
+                        search_query = ""
+                        status_message = ""
+                    elif btn_name == "Delete":
+                        state = "DELETE_ROW"
+                        status_message = ""
+                    elif btn_name == "Exit":
+                        os.system('cls')
+                        sys.exit(0)
+                elif key == 'ESC':
+                    os.system('cls')
+                    sys.exit(0)
+            elif focus_area == "TABLE":
+                if key == 'UP':
+                    if selected_row_idx > 0:
+                        selected_row_idx -= 1
+                    else:
+                        focus_area = "BUTTONS"
+                elif key == 'DOWN':
+                    if selected_row_idx < len(filtered_profiles) - 1:
+                        selected_row_idx += 1
+                elif key == 'ENTER':
+                    if filtered_profiles:
+                        p_target = filtered_profiles[selected_row_idx]
+                        data = json.loads(p_target.read_text(encoding="utf-8"))
+                        write_current_session(data.get("session", {}))
+                        set_active_profile_name(p_target.stem)
+                        meta = data.get("_meta", {})
+                        update_antigravity_settings(meta.get("model"))
+                        status_message = f"✓ Đã kích hoạt tài khoản [{selected_row_idx + 1}] '{p_target.stem}'!"
+                elif key == 'ESC':
+                    focus_area = "BUTTONS"
+
+        elif state == "EDIT_ROW":
+            if key == 'UP':
+                if selected_row_idx > 0:
+                    selected_row_idx -= 1
+            elif key == 'DOWN':
+                if selected_row_idx < len(filtered_profiles) - 1:
+                    selected_row_idx += 1
+            elif key == 'ENTER':
+                if filtered_profiles:
+                    state = "EDIT_PROP"
+                    edit_profile_path = filtered_profiles[selected_row_idx]
+                    prop_idx = 0
+                    try:
+                        d = json.loads(edit_profile_path.read_text(encoding="utf-8"))
+                        m = d.get("_meta", {})
+                        edit_model = m.get("model", DEFAULT_MODEL)
+                        edit_effort = m.get("effort", DEFAULT_EFFORT)
+                        edit_mode = m.get("mode", DEFAULT_MODE)
+                    except Exception:
+                        pass
+                    status_message = ""
+            elif key == 'ESC':
+                state = "NAV"
+                focus_area = "BUTTONS"
+                status_message = ""
+
+        elif state == "EDIT_PROP":
+            if key == 'UP':
+                prop_idx = (prop_idx - 1) % 3
+            elif key == 'DOWN':
+                prop_idx = (prop_idx + 1) % 3
+            elif key == 'LEFT':
+                if prop_idx == 0:
+                    idx = AVAILABLE_MODELS.index(edit_model) if edit_model in AVAILABLE_MODELS else 0
+                    edit_model = AVAILABLE_MODELS[(idx - 1) % len(AVAILABLE_MODELS)]
+                elif prop_idx == 1:
+                    idx = AVAILABLE_EFFORTS.index(edit_effort) if edit_effort in AVAILABLE_EFFORTS else 0
+                    edit_effort = AVAILABLE_EFFORTS[(idx - 1) % len(AVAILABLE_EFFORTS)]
+                elif prop_idx == 2:
+                    idx = AVAILABLE_MODES.index(edit_mode) if edit_mode in AVAILABLE_MODES else 0
+                    edit_mode = AVAILABLE_MODES[(idx - 1) % len(AVAILABLE_MODES)]
+            elif key == 'RIGHT':
+                if prop_idx == 0:
+                    idx = AVAILABLE_MODELS.index(edit_model) if edit_model in AVAILABLE_MODELS else 0
+                    edit_model = AVAILABLE_MODELS[(idx + 1) % len(AVAILABLE_MODELS)]
+                elif prop_idx == 1:
+                    idx = AVAILABLE_EFFORTS.index(edit_effort) if edit_effort in AVAILABLE_EFFORTS else 0
+                    edit_effort = AVAILABLE_EFFORTS[(idx + 1) % len(AVAILABLE_EFFORTS)]
+                elif prop_idx == 2:
+                    idx = AVAILABLE_MODES.index(edit_mode) if edit_mode in AVAILABLE_MODES else 0
+                    edit_mode = AVAILABLE_MODES[(idx + 1) % len(AVAILABLE_MODES)]
+            elif key == 'ENTER':
+                try:
+                    data = json.loads(edit_profile_path.read_text(encoding="utf-8"))
+                    meta = data.setdefault("_meta", {})
+                    meta["model"] = edit_model
+                    meta["effort"] = edit_effort
+                    meta["mode"] = edit_mode
+                    edit_profile_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+                    if get_active_profile_name() == edit_profile_path.stem:
+                        update_antigravity_settings(edit_model)
+                    status_message = f"✓ Đã lưu cấu hình mới cho '{edit_profile_path.stem}'!"
+                except Exception as e:
+                    status_message = f"✗ Lỗi lưu cấu hình: {e}"
+            elif key == 'ESC':
+                state = "EDIT_ROW"
+                status_message = ""
+
+        elif state == "SEARCH":
+            if key == 'ESC':
+                search_query = ""
+                state = "NAV"
+                focus_area = "BUTTONS"
+                status_message = ""
+            elif key == 'BACKSPACE':
+                search_query = search_query[:-1]
+                selected_row_idx = 0
+            elif key == 'UP':
+                if selected_row_idx > 0:
+                    selected_row_idx -= 1
+            elif key == 'DOWN':
+                if selected_row_idx < len(filtered_profiles) - 1:
+                    selected_row_idx += 1
+            elif key == 'ENTER':
+                if filtered_profiles:
+                    p_target = filtered_profiles[selected_row_idx]
+                    data = json.loads(p_target.read_text(encoding="utf-8"))
+                    write_current_session(data.get("session", {}))
+                    set_active_profile_name(p_target.stem)
+                    meta = data.get("_meta", {})
+                    update_antigravity_settings(meta.get("model"))
+                    status_message = f"✓ Đã kích hoạt tài khoản '{p_target.stem}'!"
+                    search_query = ""
+                    state = "NAV"
+            elif len(key) == 1 and ord(key) >= 32:
+                search_query += key
+                selected_row_idx = 0
+
+        elif state == "DELETE_ROW":
+            if key == 'UP':
+                if selected_row_idx > 0:
+                    selected_row_idx -= 1
+            elif key == 'DOWN':
+                if selected_row_idx < len(filtered_profiles) - 1:
+                    selected_row_idx += 1
+            elif key == 'ENTER':
+                if filtered_profiles:
+                    state = "DELETE_CONFIRM"
+                    status_message = ""
+            elif key == 'ESC':
+                state = "NAV"
+                focus_area = "BUTTONS"
+                status_message = ""
+
+        elif state == "DELETE_CONFIRM":
+            if key in ('y', 'Y'):
+                if filtered_profiles:
+                    del_p = filtered_profiles[selected_row_idx]
+                    p_name = del_p.stem
+                    del_p.unlink()
+                    if get_active_profile_name() == p_name:
+                        if CURRENT_PROFILE_FILE.exists():
+                            CURRENT_PROFILE_FILE.unlink()
+                    status_message = f"✓ Đã xóa tài khoản '{p_name}' thành công!"
+                    state = "NAV"
+                    focus_area = "BUTTONS"
+            elif key in ('n', 'N', 'ESC'):
+                state = "DELETE_ROW"
+                status_message = "Đã hủy thao tác xóa."
+
+
+# ---------------------------------------------------------------------------
+# CLI Subcommands (Non-interactive)
 # ---------------------------------------------------------------------------
 def cmd_current(args):
     """Show the currently active Antigravity account."""
@@ -330,92 +877,11 @@ def cmd_list(args):
     active_email = current_session.get("id_token_email") if current_session else None
     active_profile_name = get_active_profile_name()
 
-    headers = ["STT", "Tài khoản", "Model", "Effort", "Mode"]
-    rows = []
-
-    for i, p in enumerate(profiles, start=1):
-        try:
-            data = json.loads(p.read_text(encoding="utf-8"))
-            session = data.get("session", {})
-            meta = data.get("_meta", {})
-            email = session.get("id_token_email", meta.get("email", "Unknown"))
-            model = meta.get("model", DEFAULT_MODEL)
-            effort = meta.get("effort", DEFAULT_EFFORT)
-            mode = meta.get("mode", DEFAULT_MODE)
-
-            is_active = (p.stem == active_profile_name) or (email == active_email and not active_profile_name)
-            
-            # Format STT
-            stt_str = f"{i}*" if is_active else str(i)
-            stt_display = f"{Style.GREEN}{Style.BOLD}{stt_str:>3}{Style.RESET}" if is_active else f"{stt_str:>3}"
-
-            # Format Account
-            acc_raw = f"{p.stem} ({email})"
-            acc_display = f"{Style.CYAN}{Style.BOLD}{acc_raw}{Style.RESET}" if is_active else acc_raw
-
-            # Format Model
-            model_display = f"{Style.WHITE}{model}{Style.RESET}"
-
-            # Format Effort
-            effort_display = f"{Style.CYAN}{effort}{Style.RESET}"
-
-            # Format Mode
-            if mode.lower() == "turbo":
-                mode_display = f"{Style.YELLOW}{Style.BOLD}turbo{Style.RESET} {Style.DIM}(skip-perm){Style.RESET}"
-            else:
-                mode_display = f"{Style.DIM}normal{Style.RESET}"
-
-            rows.append({
-                "stt": stt_display,
-                "acc": acc_display,
-                "model": model_display,
-                "effort": effort_display,
-                "mode": mode_display,
-                "is_active": is_active
-            })
-        except Exception as e:
-            rows.append({
-                "stt": str(i),
-                "acc": f"{p.stem} [Lỗi: {e}]",
-                "model": "Unknown",
-                "effort": "Unknown",
-                "mode": "Unknown",
-                "is_active": False
-            })
-
-    # Calculate dynamic column widths based on maximum visible length
-    keys = ["stt", "acc", "model", "effort", "mode"]
-    widths = []
-    for h, k in zip(headers, keys):
-        max_v = len(h)
-        for r in rows:
-            max_v = max(max_v, visible_len(r[k]))
-        widths.append(max_v + 2)
-
-    # Box Drawing Borders
-    top_border = "┌" + "┬".join("─" * w for w in widths) + "┐"
-    header_sep = "├" + "┼".join("─" * w for w in widths) + "┤"
-    bottom_border = "└" + "┴".join("─" * w for w in widths) + "┘"
-
-    header_cells = [pad_cell(f" {h} ", w, "center") for h, w in zip(headers, widths)]
-    header_line = "│" + "│".join(header_cells) + "│"
-
+    table_lines = build_table_lines(profiles, active_profile_name, active_email)
     print(f"\n{Style.BOLD}Danh sách tài khoản Antigravity:{Style.RESET}\n")
-    print(top_border)
-    print(f"{Style.BOLD}{header_line}{Style.RESET}")
-    print(header_sep)
+    for line in table_lines:
+        print(line)
 
-    for r in rows:
-        row_cells = [
-            pad_cell(f" {r['stt']} ", widths[0], "center"),
-            pad_cell(f" {r['acc']} ", widths[1], "left"),
-            pad_cell(f" {r['model']} ", widths[2], "left"),
-            pad_cell(f" {r['effort']} ", widths[3], "center"),
-            pad_cell(f" {r['mode']} ", widths[4], "left"),
-        ]
-        print("│" + "│".join(row_cells) + "│")
-
-    print(bottom_border)
     print(f"\n  {Style.GREEN}*{Style.RESET} : Tài khoản đang kích hoạt (Active)")
     print(f"  {Style.CYAN}Chuyển nhanh theo STT{Style.RESET} : {Style.BOLD}agy-controller switch <STT>{Style.RESET}  (VD: {Style.CYAN}agy-controller switch 2{Style.RESET})")
     print(f"  {Style.CYAN}Chạy và đổi cấu hình{Style.RESET} : {Style.BOLD}agy-controller run [STT] [--mode normal|turbo] [--model ...]{Style.RESET}")
@@ -483,10 +949,9 @@ def cmd_run(args):
             if p_test:
                 target = args.extra_args.pop(0)
 
-    # 1. Determine profile path
+    # Determine profile path
     if target:
         profile_path, stt = resolve_profile(target)
-        # Switch to this profile if not already active
         if get_active_profile_name() != profile_path.stem:
             try:
                 data = json.loads(profile_path.read_text(encoding="utf-8"))
@@ -516,7 +981,7 @@ def cmd_run(args):
                 print_error(f"Không tìm thấy file profile của tài khoản '{active_name}'.")
                 sys.exit(1)
 
-    # 2. Load profile data
+    # Load profile data
     try:
         data = json.loads(profile_path.read_text(encoding="utf-8"))
     except Exception as e:
@@ -526,7 +991,6 @@ def cmd_run(args):
     meta = data.setdefault("_meta", {})
     changed = False
 
-    # 3. Update & Save configuration if any config flags provided
     if getattr(args, "model", None):
         meta["model"] = args.model
         changed = True
@@ -550,20 +1014,18 @@ def cmd_run(args):
     # Sync model to settings.json
     update_antigravity_settings(model)
 
-    # 4. Build command line
+    # Build command line
     agy_binary = shutil.which("agy") or "agy"
     cmd_args = [agy_binary]
 
     if model:
         cmd_args.extend(["--model", model])
     if effort and effort.lower() not in ("-", "default", "none"):
-        # agy rejects --effort on models with fixed effort in name like Gemini 3.8 Flash (Medium)
         if not any(f"({e.lower()})" in model.lower() for e in ["low", "medium", "high", "xhigh", "max"]):
             cmd_args.extend(["--effort", effort])
     if mode.lower() == "turbo":
         cmd_args.append("--dangerously-skip-permissions")
 
-    # Pass through any extra arguments
     if hasattr(args, "extra_args") and args.extra_args:
         cmd_args.extend(args.extra_args)
 
@@ -708,13 +1170,11 @@ def cmd_login(args):
             (PROFILES_DIR / f"{default_old_name}.json").write_text(json.dumps(save_data, indent=2), encoding="utf-8")
             print_success(f"Tài khoản cũ đã được lưu an toàn thành '{default_old_name}'.")
 
-    # Clear credential
     print_info("Chuẩn bị phiên đăng nhập mới...")
     delete_credential_raw(CREDENTIAL_TARGET)
     if CURRENT_PROFILE_FILE.exists():
         CURRENT_PROFILE_FILE.unlink()
 
-    # Launch agy
     agy_cmd = shutil.which("agy") or "agy"
     print_info(f"Khởi chạy '{agy_cmd}' để xác thực Google...")
     print(f"{Style.DIM}>>> Hãy hoàn tất đăng nhập trong trình duyệt, sau đó quay lại terminal này <<<{Style.RESET}\n")
@@ -726,7 +1186,6 @@ def cmd_login(args):
     except Exception as e:
         print_error(f"Không thể khởi chạy agy: {e}")
 
-    # Check new credential
     new_session = get_current_session()
     if not new_session:
         print_warning("Không phát hiện phiên đăng nhập mới nào.")
@@ -870,13 +1329,11 @@ def cmd_install(args):
     for bin_dir in unique_dirs:
         bin_dir.mkdir(parents=True, exist_ok=True)
 
-        # 1. Clean legacy wrappers
         for lf in legacy_files:
             old_f = bin_dir / lf
             if old_f.exists():
                 old_f.unlink()
 
-        # 2. Install unified command: agy-controller
         (bin_dir / "agy-controller.cmd").write_text(f'@echo off\npython "{script_path}" %*\n', encoding="utf-8")
         (bin_dir / "agy-controller.ps1").write_text(f'& python "{script_path}" @args\n', encoding="utf-8")
 
@@ -884,7 +1341,7 @@ def cmd_install(args):
     for d in unique_dirs:
         print(f"  Thư mục: {d}")
     print(f"\nLệnh khả dụng duy nhất: {Style.BOLD}{Style.CYAN}agy-controller{Style.RESET}")
-    print(f"Bạn có thể gõ {Style.CYAN}agy-controller list{Style.RESET} hoặc {Style.CYAN}agy-controller run{Style.RESET} ở bất kỳ đâu trong CMD hoặc PowerShell!\n")
+    print(f"Bạn có thể gõ {Style.CYAN}agy-controller{Style.RESET} ở bất kỳ đâu trong CMD hoặc PowerShell để mở giao diện điều khiển!\n")
 
 def cmd_uninstall(args):
     """Remove CLI wrappers from user's agy bin folder."""
@@ -920,6 +1377,10 @@ def main():
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Các lệnh có sẵn")
+
+    # tui
+    p_tui = subparsers.add_parser("tui", help="Khởi chạy giao diện tương tác động TUI")
+    p_tui.set_defaults(func=lambda args: run_interactive_tui())
 
     # list
     p_list = subparsers.add_parser("list", aliases=["ls"], help="Xem bảng động danh sách tài khoản, Model, Effort, Mode")
@@ -992,9 +1453,8 @@ def main():
     args.extra_args = extra_args
 
     if not args.command:
-        # Default behavior: show current info and list table
-        cmd_current(args)
-        cmd_list(args)
+        # Default behavior: launch interactive dynamic TUI!
+        run_interactive_tui()
         return
 
     args.func(args)
