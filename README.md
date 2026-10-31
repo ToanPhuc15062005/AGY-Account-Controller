@@ -123,6 +123,51 @@ agy-mas run "Xây dựng hệ thống Authentication và thanh toán Stripe" ^
     * `claude-sonnet-4-6`
     * `claude-opus-4-6-thinking`
     * `gpt-oss-120b-medium`
+* `--effort`: Mức độ suy luận (Reasoning Effort) mặc định cho các agent: `low`, `medium`, `high`, `xhigh`, `max` (mặc định: `medium`).
+
+---
+
+### ⚙️ Thiết lập Model và Effort cho Orchestrator & Worker (3 cấp độ ưu tiên)
+
+Hệ thống hỗ trợ cơ chế phân cấp (hierarchical fallback) linh hoạt để bạn kiểm soát mô hình và mức suy luận:
+
+```text
+Cấp 3: Task Contract (--model, --effort trong task create)    [ƯU TIÊN CAO NHẤT]
+       ▲
+       │ (nếu task không ghi đè)
+Cấp 2: Account Profile (Cấu hình riêng của từng tài khoản)
+       ▲
+       │ (nếu account để mặc định)
+Cấp 1: Orchestrator Policy (--model, --effort trong agy-mas run)
+```
+
+1. **Cấp 1 - Toàn cục cho phiên chạy (`Orchestrator Level`)**:
+   * Thiết lập qua cờ `--model` và `--effort` ngay khi gọi `agy-mas run`:
+     ```cmd
+     agy-mas run "Xây dựng microservice" --model claude-sonnet-4-6 --effort high
+     ```
+   * Sẽ áp dụng cho bộ Planner lập kế hoạch và làm giá trị mặc định cho toàn bộ các worker trong phiên.
+
+2. **Cấp 2 - Kế thừa theo Tài khoản (`Account Profile Level`)**:
+   * Thiết lập độc lập cho từng tài khoản qua `agy-controller config` hoặc giao diện TUI:
+     ```cmd
+     :: Tài khoản 1 dùng Flash để xử lý tác vụ nhẹ, tiết kiệm
+     agy-controller config 1 --model gemini-3.8-flash --effort medium
+
+     :: Tài khoản 2 chuyên dùng Sonnet mức suy luận cao
+     agy-controller config 2 --model claude-sonnet-4-6 --effort high --mode turbo
+     ```
+   * **Khi Orchestrator phân công Task cho Tài khoản 2**, worker sẽ **tự động chạy bằng `claude-sonnet-4-6` với effort `high`** mà bạn không cần cấu hình lại!
+
+3. **Cấp 3 - Tác vụ chuyên biệt (`Task Level - Ghi đè tuyệt đối`)**:
+   * Khi tạo task thủ công trong Cách 2 (`agy-mas task create`), bạn có thể chỉ định model/effort riêng cho từng task:
+     ```cmd
+     :: Tác vụ giải thuật khó: Ép dùng Claude Opus với mức suy luận max
+     agy-mas task create proj_1 task_algo "Thiết kế giải thuật mã hóa" --model claude-opus-4-6-thinking --effort max
+
+     :: Tác vụ viết tài liệu: Ép dùng Gemini Flash với effort low
+     agy-mas task create proj_1 task_docs "Viết API documentation" --model gemini-3.8-flash --effort low
+     ```
 
 #### Quy trình 3 bước tự động thực thi:
 1. **[1/3] Khởi tạo Dự án & Database**: Đăng ký dự án vào SQLite WAL, gắn kết `workspace_root` và chuẩn bị snapshot baseline.

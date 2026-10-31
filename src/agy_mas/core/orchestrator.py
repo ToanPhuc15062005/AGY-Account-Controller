@@ -36,6 +36,7 @@ class Orchestrator:
         adapter: AgentRuntimeAdapter,
         quota_tracker: Optional[QuotaTracker] = None,
         max_concurrency: int = 4,
+        default_policy: Optional[Dict[str, Any]] = None,
     ):
         self.project_repo = project_repo
         self.task_repo = task_repo
@@ -45,6 +46,7 @@ class Orchestrator:
         self.resource_repo = resource_repo
         self.workspace_mgr = workspace_mgr
         self.adapter = adapter
+        self.default_policy = default_policy or {}
 
         self.quota_tracker = quota_tracker or QuotaTracker(resource_repo)
         self.scheduler = Scheduler(task_repo, resource_repo, self.quota_tracker, max_concurrency)
@@ -170,7 +172,7 @@ class Orchestrator:
         )
 
         for d in decisions:
-            exec_id, proc = self.dispatcher.dispatch(project_id, d)
+            exec_id, proc = self.dispatcher.dispatch(project_id, d, policy=self.default_policy)
             self.active_executions[exec_id] = (d.task_id, proc, d.task_contract, d.account_id, time.time())
 
         # 3. Check project terminal state

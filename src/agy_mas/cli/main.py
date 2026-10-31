@@ -82,6 +82,17 @@ def cmd_task(args, ctx):
     task_repo = ctx["task_repo"]
     if args.task_action == "create":
         deps = [d.strip() for d in args.depends_on.split(",") if d.strip()] if args.depends_on else []
+        task_spec = {}
+        params = {}
+        if getattr(args, "model", None):
+            params["model"] = args.model
+        if getattr(args, "effort", None):
+            params["effort"] = args.effort
+        if getattr(args, "mode", None):
+            params["mode"] = args.mode
+        if params:
+            task_spec["inputs"] = {"parameters": params}
+
         t = task_repo.create(
             task_id=args.id,
             project_id=args.project_id,
@@ -89,6 +100,7 @@ def cmd_task(args, ctx):
             description=args.desc or args.title,
             priority=args.priority,
             depends_on=deps,
+            task_spec=task_spec if task_spec else None,
         )
         print(f"[OK] Task created: {t['task_id']} in {t['project_id']} (deps: {t['dependencies']})")
 
@@ -132,6 +144,11 @@ def cmd_orchestrate(args, ctx):
         config=ctx["config"].workspace,
     )
 
+    policy = {
+        "default_model": getattr(args, "model", None),
+        "default_effort": getattr(args, "effort", None),
+    }
+
     orchestrator = Orchestrator(
         project_repo=ctx["project_repo"],
         task_repo=ctx["task_repo"],
@@ -143,6 +160,7 @@ def cmd_orchestrate(args, ctx):
         adapter=ctx["adapter"],
         quota_tracker=ctx["quota_tracker"],
         max_concurrency=args.concurrency,
+        default_policy=policy,
     )
 
     accounts = [a.strip() for a in args.accounts.split(",") if a.strip()] if args.accounts else ["default"]
@@ -235,6 +253,9 @@ def main():
     t_create.add_argument("--desc", help="Task description")
     t_create.add_argument("--priority", type=int, default=50)
     t_create.add_argument("--depends-on", help="Comma-separated prerequisite task IDs")
+    t_create.add_argument("--model", help="Override Model for this specific task (e.g. claude-sonnet-4-6)")
+    t_create.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], help="Override Effort level for this task")
+    t_create.add_argument("--mode", choices=["normal", "turbo"], help="Mode for this task (normal hoặc turbo)")
 
     t_list = task_sp.add_parser("list", help="List tasks")
     t_list.add_argument("project_id", help="Project ID")
@@ -265,7 +286,8 @@ def main():
     run_p.add_argument("--workspace", help="Workspace root path")
     run_p.add_argument("--accounts", help="Comma-separated candidate accounts (e.g. default,acc1,acc2)")
     run_p.add_argument("--concurrency", type=int, default=4, help="Maximum concurrent agents")
-    run_p.add_argument("--model", help="Model to use for planning (default: gemini-3.8-flash)")
+    run_p.add_argument("--model", help="Model to use for planning & orchestrating (default: gemini-3.8-flash)")
+    run_p.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], help="Default effort level for agents (default: medium)")
 
     if len(sys.argv) <= 1:
         parser.print_help()

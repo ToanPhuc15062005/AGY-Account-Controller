@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import datetime
+from pathlib import Path
 from typing import Dict, List, Any, Optional
 from ..base import (
     AgentRuntimeAdapter,
@@ -68,14 +69,32 @@ class AGYAdapter(AgentRuntimeAdapter):
         output_format = policy.get("output_format", "stream-json")
         cmd.extend(["--output-format", output_format])
 
-        # Model selection
-        model = execution_record.get("model") or policy.get("default_model")
+        # Load account profile metadata if available
+        account_id = execution_record.get("account_id")
+        profile_meta = {}
+        if account_id:
+            profile_path = Path.home() / ".gemini" / "agy-profiles" / f"{account_id}.json"
+            if profile_path.exists():
+                try:
+                    profile_meta = json.loads(profile_path.read_text(encoding="utf-8")).get("_meta", {})
+                except Exception:
+                    pass
+
+        params = task_contract.get("inputs", {}).get("parameters", {})
+
+        # Model selection (Contract Param -> Exec Record -> Profile Meta -> Policy Default -> "gemini-3.8-flash")
+        model = params.get("model") or execution_record.get("model") or profile_meta.get("model") or policy.get("default_model") or "gemini-3.8-flash"
         if model:
             cmd.extend(["--model", model])
 
-        # ADR-013: Scoped permissions by default; unrestricted bypass is opt-in
+        # Effort selection (Contract Param -> Profile Meta -> Policy Default)
+        effort = params.get("effort") or profile_meta.get("effort") or policy.get("default_effort")
+        if effort:
+            cmd.extend(["--effort", effort])
+
+        # ADR-013: Scoped permissions by default; unrestricted bypass is opt-in (Turbo Mode)
         perm_profile = task_contract.get("permission_profile", {})
-        if perm_profile.get("dangerously_skip_permissions", False):
+        if perm_profile.get("dangerously_skip_permissions", False) or profile_meta.get("mode") == "turbo" or params.get("mode") == "turbo":
             cmd.append("--dangerously-skip-permissions")
 
         # Assemble prompt payload
