@@ -83,20 +83,26 @@ class TaskStateMachine:
             raise ValueError(f"Task not found: {task_id}")
 
         current_state = task["status"]
-        if current_state == target_state:
-            return True  # Idempotent no-op
+        try:
+            curr = TaskState(current_state)
+            target = TaskState(target_state)
+        except ValueError:
+            return False
+
+        if curr == target:
+            return True
 
         if not cls.can_transition(current_state, target_state):
             raise InvalidStateTransitionError(
-                f"Invalid transition for task '{task_id}': cannot move from '{current_state}' to '{target_state}'"
+                f"Invalid transition for task '{task_id}': cannot move from '{current_state}' to '{target.value}'"
             )
 
-        updated = task_repo.update_status(task_id, target_state)
+        updated = task_repo.update_status(task_id, target.value)
         if updated and event_repo:
             payload = {
                 "task_id": task_id,
-                "previous_state": current_state,
-                "new_state": target_state,
+                "previous_state": curr.value,
+                "new_state": target.value,
                 "reason": reason,
             }
             if extra_payload:
