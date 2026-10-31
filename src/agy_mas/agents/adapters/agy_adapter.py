@@ -87,9 +87,11 @@ class AGYAdapter(AgentRuntimeAdapter):
         if model:
             cmd.extend(["--model", model])
 
-        # Effort selection (Contract Param -> Profile Meta -> Policy Default)
+        # Effort selection: ONLY Gemini models (e.g. 'gemini-3.8-flash') support --effort in Antigravity CLI.
+        # For Claude ('claude-sonnet-4-6', 'claude-opus-4-6-thinking') and GPT ('gpt-oss-120b-medium'),
+        # reasoning/thinking is built-in and AGY CLI strictly rejects --effort with exit code 1.
         effort = params.get("effort") or profile_meta.get("effort") or policy.get("default_effort")
-        if effort:
+        if effort and model and model.startswith("gemini") and effort in ("low", "medium", "high", "xhigh", "max"):
             cmd.extend(["--effort", effort])
 
         # ADR-013: Scoped permissions by default; unrestricted bypass is opt-in (Turbo Mode)

@@ -123,7 +123,8 @@ agy-mas run "Xây dựng hệ thống Authentication và thanh toán Stripe" ^
     * `claude-sonnet-4-6`
     * `claude-opus-4-6-thinking`
     * `gpt-oss-120b-medium`
-* `--effort`: Mức độ suy luận (Reasoning Effort) mặc định cho các agent: `low`, `medium`, `high`, `xhigh`, `max` (mặc định: `medium`).
+* `--effort`: Mức độ suy luận (Reasoning Effort) cho dòng mô hình Gemini (`gemini-3.8-flash`): `low`, `medium`, `high`, `xhigh`, `max` (mặc định: `medium`).
+  * *Lưu ý quan trọng:* Đối với các mô hình Claude (`claude-sonnet-4-6`, `claude-opus-4-6-thinking`) và GPT (`gpt-oss-120b-medium`), chế độ tư duy Thinking đã được Google tích hợp sẵn nguyên bản, CLI Antigravity không hỗ trợ cờ `--effort` cho các model này. Hệ thống sẽ tự động bỏ qua `--effort` khi chạy Claude/GPT để tránh lỗi CLI.
 
 ---
 
@@ -162,8 +163,11 @@ Cấp 1: Orchestrator Policy (--model, --effort trong agy-mas run)
 3. **Cấp 3 - Tác vụ chuyên biệt (`Task Level - Ghi đè tuyệt đối`)**:
    * Khi tạo task thủ công trong Cách 2 (`agy-mas task create`), bạn có thể chỉ định model/effort riêng cho từng task:
      ```cmd
-     :: Tác vụ giải thuật khó: Ép dùng Claude Opus với mức suy luận max
-     agy-mas task create proj_1 task_algo "Thiết kế giải thuật mã hóa" --model claude-opus-4-6-thinking --effort max
+     :: Tác vụ giải thuật khó: Ép dùng Claude Opus (tư duy sâu Thinking tích hợp sẵn)
+     agy-mas task create proj_1 task_algo "Thiết kế giải thuật mã hóa" --model claude-opus-4-6-thinking
+
+     :: Hoặc dùng Gemini Flash với mức suy luận tối đa (max)
+     agy-mas task create proj_1 task_algo "Thiết kế giải thuật mã hóa" --model gemini-3.8-flash --effort max
 
      :: Tác vụ viết tài liệu: Ép dùng Gemini Flash với effort low
      agy-mas task create proj_1 task_docs "Viết API documentation" --model gemini-3.8-flash --effort low

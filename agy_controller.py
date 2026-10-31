@@ -171,13 +171,13 @@ def normalize_model_and_effort(model_raw: str | None, effort_raw: str | None) ->
         else: clean_effort = effort_str if effort_str in AVAILABLE_EFFORTS else "medium"
     elif "sonnet" in m_low:
         clean_model = "claude-sonnet-4-6"
-        clean_effort = effort_str if effort_str in AVAILABLE_EFFORTS else "medium"
+        clean_effort = "built-in"
     elif "opus" in m_low:
         clean_model = "claude-opus-4-6-thinking"
-        clean_effort = effort_str if effort_str in AVAILABLE_EFFORTS else "medium"
+        clean_effort = "built-in"
     elif "gpt-oss" in m_low:
         clean_model = "gpt-oss-120b-medium"
-        clean_effort = effort_str if effort_str in AVAILABLE_EFFORTS else "medium"
+        clean_effort = "built-in"
     else:
         clean_model = model_str if model_str in AVAILABLE_MODELS else DEFAULT_MODEL
         clean_effort = effort_str if effort_str in AVAILABLE_EFFORTS else "medium"
@@ -1087,7 +1087,8 @@ def cmd_run(args):
 
     if model:
         cmd_args.extend(["--model", model])
-    if effort:
+    # ONLY Gemini models support --effort in Antigravity CLI. Claude & GPT-OSS have built-in reasoning
+    if effort and model and model.startswith("gemini") and effort in AVAILABLE_EFFORTS:
         cmd_args.extend(["--effort", effort])
     if mode.lower() == "turbo":
         cmd_args.append("--dangerously-skip-permissions")
@@ -1181,7 +1182,8 @@ def cmd_run_many(args):
         cmd_args = [agy_binary]
         if m:
             cmd_args.extend(["--model", m])
-        if ef:
+        # ONLY Gemini models support --effort in Antigravity CLI. Claude & GPT-OSS have built-in reasoning
+        if ef and m and m.startswith("gemini") and ef in AVAILABLE_EFFORTS:
             cmd_args.extend(["--effort", ef])
         if mo.lower() == "turbo":
             cmd_args.append("--dangerously-skip-permissions")
