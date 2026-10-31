@@ -20,6 +20,8 @@ from ..workspace.workspace_manager import WorkspaceManager
 from ..resources.quota_tracker import QuotaTracker
 from ..agents.adapters.agy_adapter import AGYAdapter
 from ..core.orchestrator import Orchestrator
+from ..planning.planner import Planner
+import uuid
 
 
 def init_mas(config: Optional[MASConfig] = None):
@@ -157,6 +159,53 @@ def cmd_orchestrate(args, ctx):
         time.sleep(1.0)
 
 
+def cmd_plan(args, ctx):
+    project_repo = ctx["project_repo"]
+    p = project_repo.get(args.project_id)
+    if not p:
+        print(f"Error: Project '{args.project_id}' not found.")
+        return
+    planner = Planner(ctx["task_repo"])
+    print(f"Planning subtasks for goal: '{p['goal']}'...")
+    contracts = planner.plan_project(
+        project_id=args.project_id,
+        goal=p["goal"],
+        workspace_root=p["workspace_root"],
+        model=args.model or "gemini-2.5-pro",
+    )
+    print(f"[OK] Generated {len(contracts)} validated subtasks:")
+    for c in contracts:
+        deps = ",".join(c.depends_on) or "None (runs immediately)"
+        print(f"  - [{c.task_id}] {c.title}")
+        print(f"    Writes: {c.permission_profile.write_paths} | Dependencies: {deps}")
+
+
+def cmd_run(args, ctx):
+    project_repo = ctx["project_repo"]
+    pid = args.id or f"proj_{uuid.uuid4().hex[:6]}"
+    name = args.name or args.goal[:30]
+    ws = str(Path(args.workspace or ".").resolve())
+    project_repo.create(pid, name, args.goal, ws, status="PLANNING")
+    print(f"[1/3] Project initialized: {pid} ('{name}')")
+
+    planner = Planner(ctx["task_repo"])
+    print(f"[2/3] Decomposing goal into parallel subtasks with zero collisions...")
+    contracts = planner.plan_project(
+        project_id=pid,
+        goal=args.goal,
+        workspace_root=ws,
+        model=args.model or "gemini-2.5-pro",
+    )
+    print(f"      Generated {len(contracts)} decoupled subtasks:")
+    for c in contracts:
+        deps = ",".join(c.depends_on) or "independent (parallel)"
+        print(f"      * [{c.task_id}] {c.title} (deps: {deps})")
+
+    print(f"[3/3] Launching Multi-Agent Orchestrator...")
+    args.project_id = pid
+    cmd_orchestrate(args, ctx)
+
+
 def main():
     parser = argparse.ArgumentParser(prog="agy-mas", description="Multi-Agent System for AGY")
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
@@ -203,6 +252,21 @@ def main():
     o_start.add_argument("--accounts", help="Comma-separated candidate accounts")
     o_start.add_argument("--concurrency", type=int, default=4)
 
+    # Plan subparser
+    plan_p = subparsers.add_parser("plan", help="Auto-decompose project goal into validated subtasks")
+    plan_p.add_argument("project_id", help="Project ID to plan")
+    plan_p.add_argument("--model", help="Planner model (default: gemini-2.5-pro)")
+
+    # Run subparser (Single-command autonomous execution)
+    run_p = subparsers.add_parser("run", help="Single-command: Goal -> Auto-Plan -> Parallel Multi-Agent execution")
+    run_p.add_argument("goal", help="Project goal description")
+    run_p.add_argument("--name", help="Project name")
+    run_p.add_argument("--id", help="Explicit project ID")
+    run_p.add_argument("--workspace", help="Workspace root path")
+    run_p.add_argument("--accounts", help="Comma-separated candidate accounts (e.g. default,acc1,acc2)")
+    run_p.add_argument("--concurrency", type=int, default=4, help="Maximum concurrent agents")
+    run_p.add_argument("--model", help="Model to use for planning")
+
     if len(sys.argv) <= 1:
         parser.print_help()
         sys.exit(0)
@@ -218,6 +282,10 @@ def main():
         cmd_resource(args, ctx)
     elif args.subcommand == "orchestrate":
         cmd_orchestrate(args, ctx)
+    elif args.subcommand == "plan":
+        cmd_plan(args, ctx)
+    elif args.subcommand == "run":
+        cmd_run(args, ctx)
 
 
 if __name__ == "__main__":
