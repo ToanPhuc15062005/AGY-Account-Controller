@@ -59,7 +59,7 @@ class Planner:
         project_id: str,
         goal: str,
         workspace_root: str,
-        model: str = "gemini-2.5-pro",
+        model: str = "gemini-3.8-flash",
     ) -> List[TaskContract]:
         """Generates candidate subtasks from goal, validates with PlanValidator, and persists."""
         raw_subtasks = self._decompose_with_llm(goal, workspace_root, model)

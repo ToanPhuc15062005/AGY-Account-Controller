@@ -109,7 +109,7 @@ class Orchestrator:
 
                     # Cooldown handling
                     if cls_fail.cooldown_required:
-                        model = contract.inputs.parameters.get("model", "gemini-2.5-pro")
+                        model = contract.inputs.parameters.get("model", "gemini-3.8-flash")
                         self.quota_tracker.record_quota_exhaustion(
                             account_id=acc_id,
                             model_key=model,

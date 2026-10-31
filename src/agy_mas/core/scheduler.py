@@ -79,7 +79,7 @@ class Scheduler:
                 contract = TaskContract.from_dict(raw_spec)
 
             # Model preference or default
-            model = contract.inputs.parameters.get("model", "gemini-2.5-pro")
+            model = contract.inputs.parameters.get("model", "gemini-3.8-flash")
 
             # Check account eligibility
             account = self.quota_tracker.select_eligible_account(model, available_accounts)

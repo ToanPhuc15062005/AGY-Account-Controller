@@ -171,7 +171,7 @@ def cmd_plan(args, ctx):
         project_id=args.project_id,
         goal=p["goal"],
         workspace_root=p["workspace_root"],
-        model=args.model or "gemini-2.5-pro",
+        model=args.model or "gemini-3.8-flash",
     )
     print(f"[OK] Generated {len(contracts)} validated subtasks:")
     for c in contracts:
@@ -194,7 +194,7 @@ def cmd_run(args, ctx):
         project_id=pid,
         goal=args.goal,
         workspace_root=ws,
-        model=args.model or "gemini-2.5-pro",
+        model=args.model or "gemini-3.8-flash",
     )
     print(f"      Generated {len(contracts)} decoupled subtasks:")
     for c in contracts:
@@ -255,7 +255,7 @@ def main():
     # Plan subparser
     plan_p = subparsers.add_parser("plan", help="Auto-decompose project goal into validated subtasks")
     plan_p.add_argument("project_id", help="Project ID to plan")
-    plan_p.add_argument("--model", help="Planner model (default: gemini-2.5-pro)")
+    plan_p.add_argument("--model", help="Planner model (default: gemini-3.8-flash)")
 
     # Run subparser (Single-command autonomous execution)
     run_p = subparsers.add_parser("run", help="Single-command: Goal -> Auto-Plan -> Parallel Multi-Agent execution")
@@ -265,7 +265,7 @@ def main():
     run_p.add_argument("--workspace", help="Workspace root path")
     run_p.add_argument("--accounts", help="Comma-separated candidate accounts (e.g. default,acc1,acc2)")
     run_p.add_argument("--concurrency", type=int, default=4, help="Maximum concurrent agents")
-    run_p.add_argument("--model", help="Model to use for planning")
+    run_p.add_argument("--model", help="Model to use for planning (default: gemini-3.8-flash)")
 
     if len(sys.argv) <= 1:
         parser.print_help()

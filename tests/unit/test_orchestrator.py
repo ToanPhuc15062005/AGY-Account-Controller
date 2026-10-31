@@ -163,7 +163,7 @@ class TestOrchestrator(unittest.TestCase):
 
         # Tick 2: Execution fails with QUOTA -> acc-1 put in cooldown -> auto-failover schedules acc-2 immediately!
         orchestrator.tick("p2", available_accounts=["acc-1", "acc-2"])
-        self.assertTrue(self.resource_repo.is_in_cooldown("acc-1", "gemini-2.5-pro"))
+        self.assertTrue(self.resource_repo.is_in_cooldown("acc-1", "gemini-3.8-flash"))
 
         # Task is immediately rescheduled to acc-2
         active_vals = list(orchestrator.active_executions.values())

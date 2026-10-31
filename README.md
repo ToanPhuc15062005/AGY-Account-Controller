@@ -107,7 +107,7 @@ agy-mas run "Xây dựng hệ thống Authentication và thanh toán Stripe" ^
     --workspace "C:\projects\my-ecommerce" ^
     --accounts default,toanphucnguyena1,toanphucnguyena2,n23dccn115 ^
     --concurrency 3 ^
-    --model gemini-2.5-pro
+    --model gemini-3.8-flash
 ```
 
 #### Các tùy chọn của `agy-mas run`:
@@ -117,7 +117,12 @@ agy-mas run "Xây dựng hệ thống Authentication và thanh toán Stripe" ^
 * `--workspace`: Đường dẫn thư mục làm việc của dự án (mặc định lấy thư mục hiện tại `.`).
 * `--accounts`: Danh sách các tài khoản phân tách bằng dấu phẩy dùng để luân phiên chạy tác vụ (mặc định: `default`).
 * `--concurrency`: Số lượng agent được phép chạy đồng thời tối đa (mặc định: `4`).
-* `--model`: Mô hình LLM được sử dụng để phân rã mục tiêu (mặc định: `gemini-2.5-pro`).
+* `--model`: Mô hình LLM được sử dụng trong Google Antigravity (mặc định: `gemini-3.8-flash`).
+  * Danh sách mô hình Antigravity hỗ trợ:
+    * `gemini-3.8-flash` *(Mặc định)*
+    * `claude-sonnet-4-6`
+    * `claude-opus-4-6-thinking`
+    * `gpt-oss-120b-medium`
 
 #### Quy trình 3 bước tự động thực thi:
 1. **[1/3] Khởi tạo Dự án & Database**: Đăng ký dự án vào SQLite WAL, gắn kết `workspace_root` và chuẩn bị snapshot baseline.
@@ -151,7 +156,7 @@ agy-mas project inspect proj_pay
 #### 2. Tự động sinh kế hoạch cho dự án đã có (`plan`)
 ```cmd
 :: Phân rã mục tiêu của dự án đã đăng ký thành các tác vụ hợp lệ
-agy-mas plan proj_pay --model gemini-2.5-pro
+agy-mas plan proj_pay --model gemini-3.8-flash
 ```
 
 #### 3. Quản lý tác vụ tùy chỉnh (`task`)

@@ -45,10 +45,10 @@ class AGYAdapter(AgentRuntimeAdapter):
             supports_stream_json=True,
             supports_scoped_permissions=True,
             supported_models=[
-                "gemini-2.5-pro",
-                "gemini-2.5-flash",
+                "gemini-3.8-flash",
                 "claude-sonnet-4-6",
                 "claude-opus-4-6-thinking",
+                "gpt-oss-120b-medium",
             ],
         )
 
