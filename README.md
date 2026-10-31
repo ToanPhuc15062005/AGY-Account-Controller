@@ -1,101 +1,166 @@
-# Antigravity Controller (`agy-controller`)
+# Antigravity Controller & Multi-Agent System (`agy-mas`)
 
-Trình điều khiển và **giao diện động tương tác (TUI)** duy nhất cho Antigravity CLI (`agy`) trên Windows (CMD & PowerShell). Quản lý phiên đa tài khoản, cấu hình độc lập **Model**, **Effort**, **Turbo Mode** (`--dangerously-skip-permissions`), và khởi chạy tự động.
+Bộ công cụ toàn diện gồm:
+1. **`agy-controller`**: Trình quản lý đa tài khoản, cấu hình độc lập Model / Effort / Turbo Mode và TUI tương tác cho Google Antigravity CLI (`agy`) trên Windows.
+2. **`agy-mas`**: Hệ thống Multi-Agent System (MAS) tập trung theo chuẩn kiến trúc **Architecture Specification v1.1**, điều phối song song nhiều tác tử, kiểm soát xung đột tài nguyên Windows, theo dõi hạn ngạch (quota) và tự động phục hồi.
 
 ---
 
-## ⚙️ Model & Effort tách biệt hoàn toàn
+## 🚀 Tính năng cốt lõi của Multi-Agent System (`agy-mas`)
 
-* **Model độc lập**: `gemini-3.8-flash`, `claude-sonnet-4-6`, `claude-opus-4-6-thinking`, `gpt-oss-120b-medium`.
-* **Effort độc lập**: `low`, `medium`, `high`, `xhigh`, `max` (mặc định: `medium`).
-* **Mode**: `normal` (hỏi quyền khi chạy công cụ) hoặc `turbo` (tự động bật `--dangerously-skip-permissions`).
+Hệ thống được thiết kế theo mô hình **Modular Monolith**, hướng sự kiện và tuân thủ các quyết định kiến trúc cứng cáp (hardened) cho môi trường Windows:
 
-Lệnh thực thi khi chạy được cấu trúc chính xác:
-```cmd
-agy --model gemini-3.8-flash --effort medium [--dangerously-skip-permissions]
+* **Persistence Core & SQLite Migrations (Phase 1)**:
+  * Lưu trữ bền vững toàn bộ trạng thái qua SQLite (`WAL` mode, `PRAGMA foreign_keys = ON`, `busy_timeout = 5000ms`).
+  * Hệ thống migration tự động kiểm tra `PRAGMA table_info` trước khi bổ sung cột.
+  * Bộ repositories chuyên biệt: `projects`, `tasks`, `task_dependencies`, `executions` (lịch sử bất biến), `events` (log đơn điệu), `artifacts`, `resource_locks`, `file_ownerships`, `approvals`, `account_model_resources`.
+* **Task Engine & DAG Validation (Phase 2)**:
+  * Hợp đồng tác vụ `TaskContract` quy định phạm vi đầu vào, đầu ra, quyền truy cập đường dẫn (`PermissionProfile`) và tiêu chí chấp nhận (`AcceptanceCriterion`).
+  * Máy trạng thái `TaskStateMachine` kiểm soát nghiêm ngặt 11 trạng thái vòng đời tác vụ.
+  * `DependencyGraph` (Kahn's Topological Sort) phát hiện chu trình phụ thuộc và tính toán các tác vụ sẵn sàng chạy.
+  * `PlanValidator` tự động phát hiện xung đột ghi đè song song (write collisions) giữa các tác vụ độc lập và ngăn chặn thoát workspace root.
+* **Headless AGY Adapter & Process Supervisor (Phase 3)**:
+  * Triển khai `AgentRuntimeAdapter` cho `agy` ở chế độ headless print mode (`agy -p --output-format stream-json`).
+  * Thu thập độc lập stdout/stderr và phân loại lỗi theo bảng phân loại (Section 10 Error Taxonomy: `QUOTA_EXHAUSTED`, `RATE_LIMITED`, `AUTHENTICATION_FAILED`, `PERMISSION_SOFT_DENIED`, `FILE_BUSY`).
+  * Quản lý vòng đời tiến trình qua **Windows Job Objects** (`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`), đảm bảo dọn sạch toàn bộ cây tiến trình con khi hủy bỏ hoặc hết thời gian chờ (timeout).
+  * `QuotaTracker` kiểm soát cooldown và hạn ngạch riêng biệt theo từng cặp `(account_id, model_key)`.
+* **Shared Workspace & Windows Hardening (Phase 4)**:
+  * `PathPolicy` cô lập tuyệt đối đường dẫn trong thư mục dự án.
+  * `WindowsFileRetryManager` tự động xử lý lỗi khóa file chia sẻ Windows (`WinError 32` / `WinError 33`) bằng exponential backoff kèm jitter.
+  * `OwnershipManager` quản lý quyền ghi đè theo mẫu đường dẫn (path pattern lease).
+  * `SnapshotManager` tuân thủ ADR-016: chỉ tính checksum SHA256 của deliverables sau khi cây tiến trình worker đã thoát hoàn toàn.
+* **Deterministic Central Scheduler & Orchestrator (Phase 5)**:
+  * `Scheduler` lựa chọn các tác vụ sẵn sàng, thỏa mãn phụ thuộc, tài khoản khả dụng và giới hạn concurrency.
+  * `Orchestrator` tick loop tự động phát hiện tài khoản cạn hạn ngạch và tự động chuyển đổi tác vụ (failover) sang tài khoản thay thế.
+* **Verification Pipeline & Crash Recovery (Phase 6)**:
+  * Bộ kiểm tra xác minh độc lập: `ArtifactChecker`, `ScopeChecker`, `AcceptanceChecker`, `Verifier`.
+  * Tuân thủ ADR-014 (lỗi soft-denial không được chấp nhận dù exit code là 0) và ADR-017 (chỉ chấp nhận tác vụ khi toàn bộ artifacts hợp lệ).
+  * `RecoveryManager` tự động rà soát lúc khởi động (startup reconciliation), dọn dẹp các worker đã chết ngắt quãng và mở khóa tài nguyên mồ côi.
+
+---
+
+## 📦 Cấu trúc gói mã nguồn (`src/agy_mas`)
+
+```text
+src/
+└── agy_mas/
+    ├── __init__.py
+    ├── config.py                  # Cấu hình runtime, quota, retry, storage
+    ├── storage/
+    │   ├── database.py            # SQLite connection, transaction context, pragmas
+    │   ├── migrations/            # Migration runner (v1.0 baseline + v1.1 additions)
+    │   └── repositories/          # Project, Task, Execution, Event, Artifact, Resource, Approval
+    ├── core/
+    │   ├── state_machine.py       # Task lifecycle state machine & transitions
+    │   ├── scheduler.py           # Deterministic DAG scheduler
+    │   ├── dispatcher.py          # Process invocation & execution launcher
+    │   └── orchestrator.py        # Central orchestration tick loop
+    ├── planning/
+    │   ├── plan_schema.py         # TaskContract, scopes, acceptance criteria
+    │   ├── dependency_graph.py    # DAG topological sort, cycle detection
+    │   └── plan_validator.py      # Write scope collision & path safety validator
+    ├── agents/
+    │   ├── base.py                # AgentRuntimeAdapter contract & event schemas
+    │   ├── process_manager.py     # Process supervisor & Windows Job Objects
+    │   └── adapters/
+    │       └── agy_adapter.py     # Headless stream-json adapter for AGY
+    ├── accounts/
+    │   └── credential_provider.py # Thread/process-safe atomic file lock for credentials
+    ├── workspace/
+    │   ├── path_policy.py         # Workspace path safety & traversal prevention
+    │   ├── file_lock_manager.py   # Windows WinError 32/33 bounded retry with jitter
+    │   ├── ownership_manager.py   # Path lease & write permission verification
+    │   ├── snapshot_manager.py    # Post-exit stable SHA256 artifact snapshots
+    │   └── workspace_manager.py   # Workspace coordination facade
+    ├── resources/
+    │   └── quota_tracker.py       # (account_id, model_key) cooldown tracker
+    ├── verification/
+    │   ├── artifact_checker.py    # Existence, min-size & checksum verification
+    │   ├── scope_checker.py       # Out-of-scope write verification
+    │   ├── acceptance_checker.py  # Criteria evaluator
+    │   └── verifier.py            # Comprehensive verification pipeline
+    ├── recovery/
+    │   └── recovery_manager.py    # Startup reconciliation & dead PID recovery
+    └── cli/
+        └── main.py                # agy-mas CLI entrypoint
 ```
 
 ---
 
-## 🎮 Giao diện động tương tác (TUI)
+## ⚡ Hướng dẫn sử dụng CLI `agy-mas`
 
-Chỉ cần gõ:
+Hệ thống cung cấp sẵn các wrapper [agy-mas.cmd](file:///C:/Users/TOAN%20PHUC/Desktop/project/multi-agy-tool/agy-mas.cmd) và [agy-mas.ps1](file:///C:/Users/TOAN%20PHUC/Desktop/project/multi-agy-tool/agy-mas.ps1).
+
+### 1. Quản lý dự án (Project)
 ```cmd
+:: Tạo dự án mới
+agy-mas project create "Payment Module" "Build Stripe webhook integration" --workspace "C:\projects\payment" --id proj_pay
+
+:: Liệt kê các dự án
+agy-mas project list
+
+:: Xem chi tiết cấu hình dự án
+agy-mas project inspect proj_pay
+```
+
+### 2. Quản lý tác vụ (Task)
+```cmd
+:: Tạo tác vụ gốc
+agy-mas task create proj_pay task_schema "Design database schema"
+
+:: Tạo tác vụ phụ thuộc (chạy sau task_schema)
+agy-mas task create proj_pay task_api "Implement webhook endpoint" --depends-on task_schema
+
+:: Liệt kê các tác vụ của dự án kèm trạng thái DAG
+agy-mas task list proj_pay
+```
+
+### 3. Kiểm tra hạn ngạch & tài nguyên (Resource)
+```cmd
+:: Xem trạng thái cooldown của các tài khoản và mô hình
+agy-mas resource status
+```
+
+### 4. Khởi chạy điều phối Multi-Agent (Orchestrate)
+```cmd
+:: Chạy điều phối dự án với danh sách tài khoản chỉ định và giới hạn song song
+agy-mas orchestrate start proj_pay --accounts default,toanphucnguyena1,toanphucnguyena2 --concurrency 4
+```
+
+---
+
+## 🧪 Bộ kiểm thử tự động (Test Suite)
+
+Hệ thống đi kèm bộ kiểm thử toàn diện với **36/36 tests** đạt 100%:
+* `tests/unit/test_storage.py`: Kiểm thử migrations, foreign keys, transaction rollback và 7 repositories.
+* `tests/unit/test_task_engine.py`: Kiểm thử hợp đồng tác vụ, chu trình phụ thuộc, xung đột ghi đè.
+* `tests/unit/test_agy_adapter.py`: Kiểm thử headless flags, stream-json parsing, taxonomy phân loại lỗi.
+* `tests/unit/test_workspace.py`: Kiểm thử cô lập đường dẫn, retry `WinError 32`, snapshot timing.
+* `tests/unit/test_orchestrator.py`: Kiểm thử vòng lặp điều phối DAG 2 tác vụ và tự động failover khi quota cạn.
+* `tests/unit/test_verification_recovery.py`: Kiểm thử pipeline kiểm định và phục hồi tiến trình mồ côi.
+* `tests/integration/test_e2e_acceptance.py`: Kiểm thử chấp nhận E2E v1.1 (VER-01, VER-02, VER-03, QUOTA-01, WIN-01, REC-01).
+
+Chạy toàn bộ kiểm thử:
+```powershell
+$env:PYTHONPATH="src"; python -m unittest discover -s tests -p "test_*.py"
+```
+
+---
+
+## 🎮 Antigravity Controller (`agy-controller`)
+
+Trình điều khiển và giao diện động tương tác (TUI) quản lý session cá nhân:
+
+```cmd
+:: Mở giao diện TUI tương tác
 agy-controller
+
+:: Liệt kê tài khoản
+agy-controller list
+
+:: Chuyển đổi tài khoản nhanh
+agy-controller switch 2
+
+:: Chạy song song nhiều worker với bảo vệ chống xung đột Windows Credential Manager
+agy-controller run-many -w 1 "Prompt worker 1" -w 2 "Prompt worker 2"
 ```
-Hệ thống sẽ mở giao diện điều khiển tương tác trực quan ngay trong terminal.
-
-### 1. Thanh nút điều khiển
-```text
-  [ 1. Refresh ]   [ 2. Add ]   [ 3. Edit ]   [ 4. Search ]   [ 5. Delete ]   [ 6. Exit ]
-```
-* **Phím điều hướng**: Dùng phím mũi tên **`Trái / Phải`** để chọn nút, nhấn **`Enter`** để kích hoạt. Hoặc bấm phím tắt số **`1` - `6`** / **`R, A, E, S, D, X`**.
-* **Phím `Xuống`**: Di chuyển xuống duyệt trực tiếp bảng danh sách tài khoản.
-
----
-
-### 2. Chi tiết các nút chức năng
-
-#### 🔄 Nút `Refresh` (Phím `1` hoặc `R`)
-Làm mới dữ liệu từ thư mục profile và Windows Credential Manager ngay lập tức.
-
-#### ➕ Nút `Add` (Phím `2` hoặc `A`)
-Tự động mở một **cửa sổ Command Prompt mới** chạy lệnh đăng nhập Google OAuth mà không làm gián đoạn hay mất phiên làm việc của giao diện hiện tại. Sau khi đăng nhập xong ở cửa sổ mới, quay lại giao diện và chọn `Refresh`.
-
-#### ✏️ Nút `Edit` (Phím `3` hoặc `E`)
-1. Dùng phím **`Lên / Xuống`** để duyệt giữa các tài khoản. Nhấn **`Esc`** để quay lại thanh nút.
-2. Nhấn **`Enter`** để chọn tài khoản cấu hình:
-   * Hiển thị bảng chi tiết tài khoản theo **Mẫu hiển thị 1**:
-     ```text
-     Tên Profile    : default
-     	Google Email   : phucnguyentenda@gmail.com
-     	Model          : gemini-3.8-flash
-     	Effort         : medium
-     	Mode           : turbo (dangerously-skip-permissions)
-     	Access Token   : Hợp lệ (0h 58m còn lại)
-     	Refresh Token  : Có sẵn ✓
-     	Lưu trữ        : gemini:antigravity
-     ```
-   * Dùng **`Lên / Xuống`** để chọn thuộc tính cần sửa: **`Model`**, **`Effort`**, **`Mode`**.
-   * Dùng **`Trái / Phải`** để đổi tham số của thuộc tính (Ví dụ Model: `gemini-3.8-flash` ◄► `claude-sonnet-4-6`, Effort: `low` ◄► `medium` ◄► `high`).
-   * Nhấn **`Enter`** để lưu thay đổi.
-   * Nhấn **`Esc`** để quay lại duyệt danh sách tài khoản.
-
-#### 🔍 Nút `Search` (Phím `4` hoặc `S`)
-Mở ô tìm kiếm theo **Mẫu hiển thị 2** ngay phía trên bảng:
-```text
-─────────────────────────────────────────────────────────────
-> [nhập từ khóa tìm kiếm...]
-─────────────────────────────────────────────────────────────
-```
-* Tự động lọc bảng danh sách tài khoản theo thời gian thực theo Gmail hoặc Tên profile.
-* Dùng **`Lên / Xuống`** để duyệt kết quả, nhấn **`Enter`** để kích hoạt tài khoản.
-* Nhấn **`Esc`** để thoát chế độ tìm kiếm và quay về giao diện chính.
-
-#### 🗑️ Nút `Delete` (Phím `5` hoặc `D`)
-1. Dùng **`Lên / Xuống`** để duyệt chọn tài khoản cần xóa.
-2. Nhấn **`Enter`** để chọn.
-3. Xuất hiện hộp thoại xác nhận lần cuối:
-   * Nhấn **`Y`**: Xác nhận xóa tài khoản khỏi danh sách.
-   * Nhấn **`N`** hoặc **`Esc`**: Hủy bỏ và quay lại.
-
-#### 🚪 Nút `Exit` (Phím `6` hoặc `X` / `Q`)
-Thoát chương trình và xóa màn hình console (`cls`).
-
----
-
-## ⚡ Các lệnh CLI (Chạy trực tiếp không cần mở TUI)
-
-| Lệnh CLI | Chức năng |
-|---|---|
-| `agy-controller list` | In bảng danh sách tài khoản ra console |
-| `agy-controller <STT>` *(VD: `agy-controller 2`)* | Chuyển tài khoản cực nhanh theo số STT |
-| `agy-controller switch <STT/Tên>` | Chuyển tài khoản đang kích hoạt |
-| `agy-controller run [STT] [cấu hình] [args]` | Chạy `agy`, tự động lưu cấu hình nếu đổi `--mode`, `--model`, `--effort` (bảo vệ chống xung đột đồng thời) |
-| `agy-controller run-many ...` | Chạy song song nhiều worker/tài khoản với Staggered Startup (0.4s) |
-| `agy-controller config <STT> [cấu hình]` | Cập nhật cấu hình riêng cho tài khoản qua dòng lệnh |
-| `agy-controller login [tên]` | Đăng nhập tài khoản Google mới và lưu profile |
-| `agy-controller logout` | Đăng xuất an toàn khỏi Credential Manager |
-| `agy-controller delete <STT/tên>` | Xóa profile |
-| `agy-controller install` | Cập nhật / cài đặt wrapper vào PATH |
-| `agy-controller uninstall` | Gỡ bỏ wrapper khỏi PATH |
