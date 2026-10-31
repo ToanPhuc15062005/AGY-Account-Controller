@@ -16,7 +16,7 @@ Hệ thống được thiết kế theo mô hình **Modular Monolith**, hướng
   * Bộ repositories chuyên biệt: `projects`, `tasks`, `task_dependencies`, `executions` (lịch sử bất biến), `events` (log đơn điệu), `artifacts`, `resource_locks`, `file_ownerships`, `approvals`, `account_model_resources`.
 * **Task Engine & DAG Validation (Phase 2)**:
   * Hợp đồng tác vụ `TaskContract` quy định phạm vi đầu vào, đầu ra, quyền truy cập đường dẫn (`PermissionProfile`) và tiêu chí chấp nhận (`AcceptanceCriterion`).
-  * Máy trạng thái `TaskStateMachine` kiểm soát nghiêm ngặt 11 trạng thái vòng đời tác vụ.
+  * Máy trạng thái `TaskStateMachine` kiểm soát nghiêm ngặt 12 trạng thái vòng đời tác vụ.
   * `DependencyGraph` (Kahn's Topological Sort) phát hiện chu trình phụ thuộc và tính toán các tác vụ sẵn sàng chạy.
   * `PlanValidator` tự động phát hiện xung đột ghi đè song song (write collisions) giữa các tác vụ độc lập và ngăn chặn thoát workspace root.
 * **Headless AGY Adapter & Process Supervisor (Phase 3)**:
@@ -330,6 +330,7 @@ agy-controller check toanphucnguyena1
 * Gửi yêu cầu Live Probe `agy -p ping` tới Google CLI.
 * Nếu thành công: đọc `access_token` mới nhất, cập nhật file profile JSON trên đĩa (kéo dài thêm 1 giờ hạn dùng) và khôi phục lại tài khoản ban đầu cho hệ thống.
 * Nếu Google trả về lỗi `invalid_grant` hoặc `authentication required`: thông báo tài khoản cần đăng nhập lại với `agy-controller login <tên>`.
+* **Cơ chế an toàn (Pre-flight Concurrency Guard):** Trước khi hoán đổi Credential Manager, hệ thống tự động kiểm tra `executions` trong SQLite và tiến trình qua `psutil`. Nếu phát hiện có bất kỳ worker nào đang chạy song song, lệnh `check <STT>` sẽ **tự động từ chối thực hiện live probe** để bảo vệ credential của worker đang chạy không bị ghi đè, tránh hoàn toàn lỗi race condition trên Windows.
 
 ### 3. Bảng giải thích chi tiết ký hiệu trạng thái:
 

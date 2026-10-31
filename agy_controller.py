@@ -1593,7 +1593,58 @@ def check_account_status(profile_path: Path) -> dict:
     }
 
 
+def get_active_workers_info() -> list:
+    """Kiểm tra xem hiện tại có worker MAS hoặc tiến trình song song nào đang chạy không."""
+    active = []
+    try:
+        project_dir = Path(__file__).resolve().parent
+        src_dir = project_dir / "src"
+        if str(src_dir) not in sys.path:
+            sys.path.insert(0, str(src_dir))
+
+        from agy_mas.config import MASConfig
+        from agy_mas.storage.database import Database
+        import psutil
+
+        cfg = MASConfig.load()
+        db_path = Path(cfg.storage.db_path)
+        if db_path.exists():
+            db = Database(str(db_path))
+            rows = db.fetchall("SELECT execution_id, task_id, account_id, pid FROM executions WHERE status = 'RUNNING';")
+            db.close()
+            for r in rows:
+                pid = r.get("pid")
+                if pid and psutil.pid_exists(pid):
+                    try:
+                        p = psutil.Process(pid)
+                        if p.is_running() and p.status() != psutil.STATUS_ZOMBIE:
+                            active.append({
+                                "execution_id": r.get("execution_id"),
+                                "task_id": r.get("task_id"),
+                                "account_id": r.get("account_id"),
+                                "pid": pid,
+                            })
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+    return active
+
+
 def probe_single_account(profile_path: Path):
+    # Architectural Guard: Pre-flight check only. Từ chối live probe nếu có worker đang chạy
+    # để ngăn ngừa race condition trên Windows Credential Manager (gemini:antigravity).
+    active_workers = get_active_workers_info()
+    if active_workers:
+        print_warning(f"\n[TỪ CHỐI LIVE PROBE - PHÁT HIỆN WORKER ĐANG HOẠT ĐỘNG]")
+        print(f"Hệ thống phát hiện có {len(active_workers)} tác vụ đang chạy song song:")
+        for w in active_workers:
+            print(f"  • Task '{w['task_id']}' (PID: {w['pid']}, Tài khoản: {w['account_id']})")
+        print_error("Từ chối tráo đổi Credential Manager để bảo vệ các worker đang chạy không bị lỗi xác thực chéo.")
+        print(f"  {Style.DIM}Lưu ý: Lệnh 'check <tài khoản>' chỉ dùng làm Pre-flight Check (trước khi chạy job).")
+        print(f"  Để kiểm tra an toàn lúc này, hãy dùng bảng tĩnh: 'agy-controller check-all'{Style.RESET}\n")
+        return
+
     data = json.loads(profile_path.read_text(encoding="utf-8"))
     session = data.get("session", {})
     email = session.get("id_token_email", "Unknown")
