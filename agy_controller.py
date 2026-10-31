@@ -71,21 +71,18 @@ PROFILES_DIR = Path.home() / ".gemini" / "agy-profiles"
 CURRENT_PROFILE_FILE = PROFILES_DIR / ".current_profile"
 SETTINGS_FILE = Path.home() / ".gemini" / "antigravity-cli" / "settings.json"
 
-DEFAULT_MODEL = "Gemini 3.8 Flash (Medium)"
-DEFAULT_EFFORT = "-"
+DEFAULT_MODEL = "gemini-3.8-flash"
+DEFAULT_EFFORT = "medium"
 DEFAULT_MODE = "normal"
 
 AVAILABLE_MODELS = [
-    "Gemini 3.8 Flash (Medium)",
-    "Gemini 3.8 Flash (High)",
-    "Gemini 3.8 Flash (Low)",
-    "Claude Sonnet 4.6 (Thinking)",
-    "Claude Opus 4.6 (Thinking)",
-    "GPT-OSS 120B (Medium)"
+    "gemini-3.8-flash",
+    "claude-sonnet-4-6",
+    "claude-opus-4-6-thinking",
+    "gpt-oss-120b-medium"
 ]
 
 AVAILABLE_EFFORTS = [
-    "-",
     "low",
     "medium",
     "high",
@@ -97,6 +94,33 @@ AVAILABLE_MODES = [
     "normal",
     "turbo"
 ]
+
+def normalize_model_and_effort(model_raw: str | None, effort_raw: str | None) -> tuple[str, str]:
+    """Tách biệt hoàn toàn Model và Effort thành 2 tham số riêng rẽ."""
+    model_str = (model_raw or DEFAULT_MODEL).strip()
+    effort_str = (effort_raw or DEFAULT_EFFORT).strip()
+
+    m_low = model_str.lower()
+    if "gemini" in m_low and "3.8" in m_low:
+        clean_model = "gemini-3.8-flash"
+        if "low" in m_low: clean_effort = "low"
+        elif "high" in m_low: clean_effort = "high"
+        elif "medium" in m_low: clean_effort = "medium"
+        else: clean_effort = effort_str if effort_str in AVAILABLE_EFFORTS else "medium"
+    elif "sonnet" in m_low:
+        clean_model = "claude-sonnet-4-6"
+        clean_effort = effort_str if effort_str in AVAILABLE_EFFORTS else "medium"
+    elif "opus" in m_low:
+        clean_model = "claude-opus-4-6-thinking"
+        clean_effort = effort_str if effort_str in AVAILABLE_EFFORTS else "medium"
+    elif "gpt-oss" in m_low:
+        clean_model = "gpt-oss-120b-medium"
+        clean_effort = effort_str if effort_str in AVAILABLE_EFFORTS else "medium"
+    else:
+        clean_model = model_str if model_str in AVAILABLE_MODELS else DEFAULT_MODEL
+        clean_effort = effort_str if effort_str in AVAILABLE_EFFORTS else "medium"
+
+    return clean_model, clean_effort
 
 TUI_BUTTONS = ["Refresh", "Add", "Edit", "Search", "Delete", "Exit"]
 
@@ -333,8 +357,7 @@ def format_account_details(profile_path: Path) -> list[str]:
         session = data.get("session", {})
         meta = data.get("_meta", {})
         email = session.get("id_token_email", meta.get("email", "Unknown"))
-        model = meta.get("model", DEFAULT_MODEL)
-        effort = meta.get("effort", DEFAULT_EFFORT)
+        model, effort = normalize_model_and_effort(meta.get("model"), meta.get("effort"))
         mode = meta.get("mode", DEFAULT_MODE)
         token = session.get("token", {})
         expiry_str = token.get("expiry")
@@ -378,8 +401,7 @@ def build_table_lines(profiles: list[Path], active_profile_name: str | None, act
             session = data.get("session", {})
             meta = data.get("_meta", {})
             email = session.get("id_token_email", meta.get("email", "Unknown"))
-            model = meta.get("model", DEFAULT_MODEL)
-            effort = meta.get("effort", DEFAULT_EFFORT)
+            model, effort = normalize_model_and_effort(meta.get("model"), meta.get("effort"))
             mode = meta.get("mode", DEFAULT_MODE)
 
             is_active = (p.stem == active_profile_name) or (email == active_email and not active_profile_name)
@@ -704,8 +726,7 @@ def run_interactive_tui():
                     try:
                         d = json.loads(edit_profile_path.read_text(encoding="utf-8"))
                         m = d.get("_meta", {})
-                        edit_model = m.get("model", DEFAULT_MODEL)
-                        edit_effort = m.get("effort", DEFAULT_EFFORT)
+                        edit_model, edit_effort = normalize_model_and_effort(m.get("model"), m.get("effort"))
                         edit_mode = m.get("mode", DEFAULT_MODE)
                     except Exception:
                         pass
@@ -848,8 +869,7 @@ def cmd_current(args):
             except Exception:
                 pass
 
-    model = meta.get("model", DEFAULT_MODEL)
-    effort = meta.get("effort", DEFAULT_EFFORT)
+    model, effort = normalize_model_and_effort(meta.get("model"), meta.get("effort"))
     mode = meta.get("mode", DEFAULT_MODE)
     mode_display = f"{Style.YELLOW}{Style.BOLD}turbo (dangerously-skip-permissions){Style.RESET}" if mode == "turbo" else "normal"
 
@@ -920,8 +940,7 @@ def cmd_switch(args):
 
     set_active_profile_name(profile_name)
     email = session.get("id_token_email", meta.get("email", "Unknown"))
-    model = meta.get("model", DEFAULT_MODEL)
-    effort = meta.get("effort", DEFAULT_EFFORT)
+    model, effort = normalize_model_and_effort(meta.get("model"), meta.get("effort"))
     mode = meta.get("mode", DEFAULT_MODE)
 
     # Sync model to settings.json
@@ -1007,8 +1026,7 @@ def cmd_run(args):
         profile_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
         print_success(f"Đã lưu cấu hình mới cho '{profile_path.stem}': Model={meta.get('model', DEFAULT_MODEL)} | Effort={meta.get('effort', DEFAULT_EFFORT)} | Mode={meta.get('mode', DEFAULT_MODE)}")
 
-    model = meta.get("model", DEFAULT_MODEL)
-    effort = meta.get("effort", DEFAULT_EFFORT)
+    model, effort = normalize_model_and_effort(meta.get("model"), meta.get("effort"))
     mode = meta.get("mode", DEFAULT_MODE)
 
     # Sync model to settings.json
@@ -1020,9 +1038,8 @@ def cmd_run(args):
 
     if model:
         cmd_args.extend(["--model", model])
-    if effort and effort.lower() not in ("-", "default", "none"):
-        if not any(f"({e.lower()})" in model.lower() for e in ["low", "medium", "high", "xhigh", "max"]):
-            cmd_args.extend(["--effort", effort])
+    if effort:
+        cmd_args.extend(["--effort", effort])
     if mode.lower() == "turbo":
         cmd_args.append("--dangerously-skip-permissions")
 
@@ -1086,8 +1103,9 @@ def cmd_config(args):
 
     profile_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
     print_success(f"Đã cập nhật cấu hình cho [{stt}] '{Style.CYAN}{profile_path.stem}{Style.RESET}':")
-    print(f"  Model  : {meta.get('model', DEFAULT_MODEL)}")
-    print(f"  Effort : {meta.get('effort', DEFAULT_EFFORT)}")
+    res_m, res_e = normalize_model_and_effort(meta.get("model"), meta.get("effort"))
+    print(f"  Model  : {res_m}")
+    print(f"  Effort : {res_e}")
     print(f"  Mode   : {meta.get('mode', DEFAULT_MODE)}")
 
 
@@ -1393,7 +1411,7 @@ def main():
 
     # run
     p_run = subparsers.add_parser("run", help="Chạy agy (có thể kèm STT, đổi Model, Effort, Mode và tự động lưu)")
-    p_run.add_argument("--model", help="Cập nhật Model (VD: 'Gemini 3.8 Flash (High)')")
+    p_run.add_argument("--model", help="Cập nhật Model (VD: 'gemini-3.8-flash', 'claude-sonnet-4-6')")
     p_run.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], help="Cập nhật Effort")
     p_run.add_argument("--mode", choices=["normal", "turbo"], help="Cập nhật Mode: normal hoặc turbo (--dangerously-skip-permissions)")
     p_run.set_defaults(func=cmd_run)
@@ -1401,7 +1419,7 @@ def main():
     # config
     p_cfg = subparsers.add_parser("config", aliases=["cfg", "set"], help="Cấu hình Model, Effort, Mode cho tài khoản")
     p_cfg.add_argument("target", help="Số STT hoặc tên profile")
-    p_cfg.add_argument("--model", help="Tên Model")
+    p_cfg.add_argument("--model", help="Tên Model (VD: 'gemini-3.8-flash', 'claude-sonnet-4-6')")
     p_cfg.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], help="Mức Effort")
     p_cfg.add_argument("--mode", choices=["normal", "turbo"], help="Mode: normal hoặc turbo")
     p_cfg.set_defaults(func=cmd_config)
