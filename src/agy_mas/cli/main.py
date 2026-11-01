@@ -3,8 +3,21 @@
 import argparse
 import sys
 import json
+import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
+
+# Ensure line-buffering on stdout/stderr to prevent log starvation in background pipes
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+    except Exception:
+        pass
+if hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(line_buffering=True)
+    except Exception:
+        pass
 from ..config import MASConfig
 from ..storage.database import Database
 from ..storage.migrations.runner import MigrationRunner
@@ -115,6 +128,38 @@ def cmd_task(args, ctx):
             deps_str = ",".join(t.get("dependencies", [])) or "-"
             print(f"{t['task_id']:<16} {t['status']:<12} {t['priority']:<8} {deps_str:<16} {t['title']}")
 
+    elif args.task_action == "logs":
+        exec_repo = ctx["execution_repo"]
+        execs = exec_repo.list_by_task(args.task_id)
+        log_path = None
+        latest = {}
+        if execs:
+            latest = execs[-1]
+            meta = json.loads(latest.get("metadata_json") or "{}")
+            log_path = meta.get("log_path")
+
+        if not log_path or not Path(log_path).exists():
+            log_dir = Path.home() / ".gemini" / "antigravity-cli" / "logs" / args.project_id
+            candidates = sorted(log_dir.glob(f"{args.task_id}_*.log")) if log_dir.exists() else []
+            if candidates:
+                log_path = str(candidates[-1])
+            else:
+                print(f"No log file found on disk for task '{args.task_id}'.")
+                return
+
+        exec_id = latest.get("execution_id", "N/A")
+        pid_info = latest.get("pid", "N/A")
+        print(f"=== Logs for Task '{args.task_id}' (Execution: {exec_id}, PID: {pid_info}) ===")
+        print(f"Log File: {log_path}\n" + "-" * 75)
+        try:
+            with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()
+                tail_lines = lines[-args.tail:] if (args.tail and args.tail > 0) else lines
+                for l in tail_lines:
+                    print(l, end="", flush=True)
+        except Exception as e:
+            print(f"Error reading log file: {e}")
+
 
 def cmd_resource(args, ctx):
     resource_repo = ctx["resource_repo"]
@@ -149,6 +194,46 @@ def cmd_orchestrate(args, ctx):
         "default_effort": getattr(args, "effort", None),
     }
 
+    def cli_event_listener(event_type: str, data: Dict[str, Any]):
+        now_str = datetime.datetime.now().strftime("%H:%M:%S")
+        if event_type == "TASK_DISPATCHED":
+            tid = data.get("task_id")
+            acc = data.get("account_id")
+            model = data.get("model")
+            pid = data.get("pid")
+            title = data.get("title", "")
+            print(f"[{now_str}] [DISPATCH]  Task '{tid}' -> Account: {acc} | Model: {model} | PID: {pid} | Title: {title}", flush=True)
+        elif event_type == "TASK_VERIFYING":
+            tid = data.get("task_id")
+            code = data.get("exit_code")
+            el = data.get("elapsed_seconds")
+            print(f"[{now_str}] [VERIFYING] Task '{tid}' process exited (Exit: {code}, elapsed: {el}s) -> verifying artifacts...", flush=True)
+        elif event_type == "TASK_ACCEPTED":
+            tid = data.get("task_id")
+            el = data.get("elapsed_seconds")
+            arts = data.get("artifacts", [])
+            art_str = f" ({len(arts)} artifact(s): {', '.join(arts[:2])})" if arts else ""
+            print(f"[{now_str}] [ACCEPTED]  Task '{tid}' verified successfully in {el}s{art_str}", flush=True)
+        elif event_type == "TASK_FAILED":
+            tid = data.get("task_id")
+            err = data.get("error_type")
+            reason = data.get("reason")
+            retry = " (will retry)" if data.get("retryable") else " (terminal failure)"
+            print(f"[{now_str}] [FAILED]    Task '{tid}' failed: [{err}] {reason}{retry}", flush=True)
+        elif event_type == "TASK_TIMEOUT":
+            tid = data.get("task_id")
+            el = data.get("elapsed_seconds")
+            print(f"[{now_str}] [TIMEOUT]   Task '{tid}' timed out after {el}s", flush=True)
+        elif event_type == "HEARTBEAT":
+            workers = data.get("workers", [])
+            w_info = " | ".join(f"{w['task_id']} ({w['account_id']}, {w['elapsed_seconds']}s)" for w in workers)
+            print(f"[{now_str}] [HEARTBEAT] Active: {data.get('active_count')} worker(s) -> {w_info}", flush=True)
+        elif event_type == "QUOTA_COOLDOWN":
+            acc = data.get("account_id")
+            model = data.get("model")
+            dur = data.get("retry_after_seconds")
+            print(f"[{now_str}] [COOLDOWN]  Account '{acc}' model '{model}' entered cooldown for {dur}s", flush=True)
+
     orchestrator = Orchestrator(
         project_repo=ctx["project_repo"],
         task_repo=ctx["task_repo"],
@@ -161,20 +246,28 @@ def cmd_orchestrate(args, ctx):
         quota_tracker=ctx["quota_tracker"],
         max_concurrency=args.concurrency,
         default_policy=policy,
+        on_event=cli_event_listener,
     )
 
     accounts = [a.strip() for a in args.accounts.split(",") if a.strip()] if args.accounts else ["default"]
-    print(f"Starting orchestration for project '{p['name']}' ({args.project_id})...")
+    now_str = datetime.datetime.now().strftime("%H:%M:%S")
+    print(f"[{now_str}] [START] Starting orchestration for project '{p['name']}' ({args.project_id})...", flush=True)
+    print(f"[{now_str}] [CONFIG] Candidate accounts: {', '.join(accounts)} | Max concurrency: {args.concurrency}", flush=True)
     project_repo.update_status(args.project_id, "RUNNING")
 
-    # Run tick loop
-    while True:
-        status = orchestrator.tick(args.project_id, available_accounts=accounts)
-        if status["status"] in ("COMPLETED", "FAILED", "CANCELLED"):
-            print(f"[FINISHED] Orchestration reached terminal status: {status['status']}")
-            break
+    # Run tick loop with clean KeyboardInterrupt handling
+    try:
         import time
-        time.sleep(1.0)
+        while True:
+            status = orchestrator.tick(args.project_id, available_accounts=accounts)
+            if status["status"] in ("COMPLETED", "FAILED", "CANCELLED"):
+                now_str = datetime.datetime.now().strftime("%H:%M:%S")
+                print(f"[{now_str}] [FINISHED] Orchestration reached terminal status: {status['status']}", flush=True)
+                break
+            time.sleep(1.0)
+    except KeyboardInterrupt:
+        now_str = datetime.datetime.now().strftime("%H:%M:%S")
+        print(f"\n[{now_str}] [INTERRUPTED] Orchestration loop paused by user.", flush=True)
 
 
 def cmd_plan(args, ctx):
@@ -259,6 +352,11 @@ def main():
 
     t_list = task_sp.add_parser("list", help="List tasks")
     t_list.add_argument("project_id", help="Project ID")
+
+    t_logs = task_sp.add_parser("logs", help="View execution logs for a task")
+    t_logs.add_argument("project_id", help="Project ID")
+    t_logs.add_argument("task_id", help="Task ID")
+    t_logs.add_argument("--tail", type=int, default=50, help="Number of lines to show from end (default: 50)")
 
     # Resource subparser
     res_p = subparsers.add_parser("resource", help="Inspect resource states")

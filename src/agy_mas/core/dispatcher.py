@@ -3,6 +3,7 @@
 import uuid
 import datetime
 import time
+from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 from ..agents.base import AgentRuntimeAdapter
 from ..agents.process_manager import ManagedProcess
@@ -58,6 +59,13 @@ class Dispatcher:
 
         # 2. Create immutable execution record
         execution_id = f"exec_{uuid.uuid4().hex[:12]}"
+        log_dir = Path.home() / ".gemini" / "antigravity-cli" / "logs" / project_id
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_path = str(log_dir / f"{task_id}_{execution_id}.log")
+        except Exception:
+            log_path = None
+
         exec_record = self.execution_repo.create(
             execution_id=execution_id,
             task_id=task_id,
@@ -66,7 +74,7 @@ class Dispatcher:
             model=decision.model,
             status="PENDING",
             agent_print_timeout_seconds=contract.timeout_seconds,
-            metadata={"account_id": decision.account_id},
+            metadata={"account_id": decision.account_id, "log_path": log_path},
         )
 
         # 3. Claim write scope leases for expected output targets
@@ -87,7 +95,7 @@ class Dispatcher:
         with CredentialSwitchLock():
             if decision.account_id:
                 switch_credential_to_account(decision.account_id)
-            process = ManagedProcess(invocation)
+            process = ManagedProcess(invocation, log_path=log_path)
             process.start()
             if decision.account_id:
                 time.sleep(0.4)

@@ -2,7 +2,7 @@
 
 import time
 import datetime
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple, Callable
 from ..storage.repositories import (
     ProjectRepository,
     TaskRepository,
@@ -37,6 +37,7 @@ class Orchestrator:
         quota_tracker: Optional[QuotaTracker] = None,
         max_concurrency: int = 4,
         default_policy: Optional[Dict[str, Any]] = None,
+        on_event: Optional[Callable[[str, Dict[str, Any]], None]] = None,
     ):
         self.project_repo = project_repo
         self.task_repo = task_repo
@@ -47,6 +48,8 @@ class Orchestrator:
         self.workspace_mgr = workspace_mgr
         self.adapter = adapter
         self.default_policy = default_policy or {}
+        self.on_event = on_event
+        self.last_heartbeat_time = time.time()
 
         self.quota_tracker = quota_tracker or QuotaTracker(resource_repo)
         self.scheduler = Scheduler(task_repo, resource_repo, self.quota_tracker, max_concurrency)
@@ -54,6 +57,14 @@ class Orchestrator:
 
         # Active executions: execution_id -> (task_id, ManagedProcess, TaskContract, account_id, started_timestamp)
         self.active_executions: Dict[str, Tuple[str, ManagedProcess, TaskContract, str, float]] = {}
+
+    def _emit(self, event_type: str, data: Dict[str, Any]) -> None:
+        """Emits telemetry events safely without interfering with core loop."""
+        if self.on_event:
+            try:
+                self.on_event(event_type, data)
+            except Exception:
+                pass
 
     def tick(self, project_id: str, available_accounts: List[str]) -> Dict[str, Any]:
         """Performs a single evaluation tick over the project lifecycle."""
@@ -79,6 +90,12 @@ class Orchestrator:
                     self.task_repo, tid, TaskState.TIMEOUT,
                     event_repo=self.event_repo, execution_id=exec_id, reason="Timeout reached"
                 )
+                self._emit("TASK_TIMEOUT", {
+                    "task_id": tid,
+                    "execution_id": exec_id,
+                    "elapsed_seconds": round(elapsed, 1),
+                    "timeout_seconds": contract.timeout_seconds,
+                })
                 finished_execs.append(exec_id)
                 continue
 
@@ -86,6 +103,9 @@ class Orchestrator:
                 exit_code = proc.process.poll() if proc.process else -1
                 stdout_text = "\n".join(proc.stdout_lines[-50:])
                 stderr_text = "\n".join(proc.stderr_lines[-50:])
+
+                # Close process log safely
+                proc.close_log()
 
                 # Collect parsed events from output
                 events = [self.adapter.parse_line(l) for l in proc.stdout_lines if l.strip()]
@@ -96,6 +116,12 @@ class Orchestrator:
                     self.task_repo, tid, TaskState.VERIFYING,
                     event_repo=self.event_repo, execution_id=exec_id
                 )
+                self._emit("TASK_VERIFYING", {
+                    "task_id": tid,
+                    "execution_id": exec_id,
+                    "exit_code": exit_code,
+                    "elapsed_seconds": round(elapsed, 1),
+                })
 
                 # Process completion evaluation
                 if exit_code != 0:
@@ -109,6 +135,16 @@ class Orchestrator:
                     )
                     self.workspace_mgr.ownership_manager.release_all(exec_id)
 
+                    self._emit("TASK_FAILED", {
+                        "task_id": tid,
+                        "execution_id": exec_id,
+                        "exit_code": exit_code,
+                        "error_type": cls_fail.error_type,
+                        "reason": cls_fail.reason,
+                        "retryable": cls_fail.retryable,
+                        "cooldown_required": cls_fail.cooldown_required,
+                    })
+
                     # Cooldown handling
                     if cls_fail.cooldown_required:
                         model = contract.inputs.parameters.get("model", "gemini-3.8-flash")
@@ -119,6 +155,12 @@ class Orchestrator:
                             reason=cls_fail.reason,
                             source=cls_fail.evidence_source,
                         )
+                        self._emit("QUOTA_COOLDOWN", {
+                            "account_id": acc_id,
+                            "model": model,
+                            "retry_after_seconds": cls_fail.retry_after_seconds,
+                            "reason": cls_fail.reason,
+                        })
 
                     # Retry evaluation
                     past_attempts = len(self.execution_repo.list_by_task(tid))
@@ -158,6 +200,12 @@ class Orchestrator:
                         self.task_repo, tid, TaskState.ACCEPTED,
                         event_repo=self.event_repo, execution_id=exec_id, reason="Execution and artifacts verified"
                     )
+                    self._emit("TASK_ACCEPTED", {
+                        "task_id": tid,
+                        "execution_id": exec_id,
+                        "elapsed_seconds": round(elapsed, 1),
+                        "artifacts": [a.path for a in contract.outputs.expected_artifacts],
+                    })
 
                 finished_execs.append(exec_id)
 
@@ -174,6 +222,33 @@ class Orchestrator:
         for d in decisions:
             exec_id, proc = self.dispatcher.dispatch(project_id, d, policy=self.default_policy)
             self.active_executions[exec_id] = (d.task_id, proc, d.task_contract, d.account_id, time.time())
+            self._emit("TASK_DISPATCHED", {
+                "task_id": d.task_id,
+                "execution_id": exec_id,
+                "account_id": d.account_id,
+                "model": d.model,
+                "pid": proc.pid,
+                "title": d.task_contract.title,
+            })
+
+        # Periodic Heartbeat (every 15 seconds while workers are active)
+        now_ts = time.time()
+        if len(self.active_executions) > 0 and (now_ts - self.last_heartbeat_time >= 15.0):
+            self.last_heartbeat_time = now_ts
+            workers_info = [
+                {
+                    "task_id": tid,
+                    "execution_id": eid,
+                    "account_id": aid,
+                    "pid": p.pid,
+                    "elapsed_seconds": round(now_ts - sts, 1),
+                }
+                for eid, (tid, p, _, aid, sts) in self.active_executions.items()
+            ]
+            self._emit("HEARTBEAT", {
+                "active_count": len(self.active_executions),
+                "workers": workers_info,
+            })
 
         # 3. Check project terminal state
         all_tasks = self.task_repo.list_by_project(project_id)
@@ -184,6 +259,12 @@ class Orchestrator:
                 self.project_repo.update_status(project_id, "FAILED")
 
         updated_project = self.project_repo.get(project_id)
+        if updated_project and updated_project["status"] in ("COMPLETED", "FAILED", "CANCELLED"):
+            self._emit("PROJECT_TERMINAL", {
+                "project_id": project_id,
+                "status": updated_project["status"],
+                "total_tasks": len(all_tasks),
+            })
         return {
             "status": updated_project["status"] if updated_project else "UNKNOWN",
             "active_executions": len(self.active_executions),

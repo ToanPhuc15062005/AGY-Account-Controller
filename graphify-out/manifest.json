@@ -66,10 +66,10 @@
     "semantic_hash": "c1cc21c8fce5b6cd3a4436ba41da49d4"
   },
   "src/agy_mas/agents/process_manager.py": {
-    "mtime": 1793457758.522318,
-    "seen": 1793529300.5688033,
-    "ast_hash": "3b6c2e9c67e2d7b57d008ca539a50cc7",
-    "semantic_hash": "3b6c2e9c67e2d7b57d008ca539a50cc7"
+    "mtime": 1793532977.116472,
+    "seen": 1793533350.5987012,
+    "ast_hash": "95db30e36e2638ebc7e7ea5464615fe9",
+    "semantic_hash": ""
   },
   "src/agy_mas/cli/__init__.py": {
     "mtime": 1793458484.2959206,
@@ -78,10 +78,10 @@
     "semantic_hash": "c303d58290b1b0eda8945e9c498c0bb0"
   },
   "src/agy_mas/cli/main.py": {
-    "mtime": 1793462136.8886538,
-    "seen": 1793529300.5688045,
-    "ast_hash": "1e5eb9931e47b7d07c19ded1a177ee03",
-    "semantic_hash": "1e5eb9931e47b7d07c19ded1a177ee03"
+    "mtime": 1793533328.587393,
+    "seen": 1793533350.598704,
+    "ast_hash": "9f3e6808e223ea00d1fa6ad270b822d0",
+    "semantic_hash": ""
   },
   "src/agy_mas/config.py": {
     "mtime": 1793457190.7723393,
@@ -96,16 +96,16 @@
     "semantic_hash": "280035aec5cd2e7b8000a1623bddca70"
   },
   "src/agy_mas/core/dispatcher.py": {
-    "mtime": 1793529606.0921493,
-    "seen": 1793530472.853945,
-    "ast_hash": "51ee0e93e53c6bb0fc71f1ca6de1b02a",
-    "semantic_hash": "51ee0e93e53c6bb0fc71f1ca6de1b02a"
+    "mtime": 1793533010.8234706,
+    "seen": 1793533350.5987072,
+    "ast_hash": "febe9bb57c0527e8a83db0a39eda04da",
+    "semantic_hash": ""
   },
   "src/agy_mas/core/orchestrator.py": {
-    "mtime": 1793462123.1462479,
-    "seen": 1793529300.5688076,
-    "ast_hash": "ec80d9b88db71962c7c11cfe64598f25",
-    "semantic_hash": "ec80d9b88db71962c7c11cfe64598f25"
+    "mtime": 1793533097.4749906,
+    "seen": 1793533350.5987084,
+    "ast_hash": "5636ade3dbfebe522bf45cbfea6a380f",
+    "semantic_hash": ""
   },
   "src/agy_mas/core/scheduler.py": {
     "mtime": 1793461455.9463053,
@@ -342,10 +342,10 @@
     "semantic_hash": "644fd97e5581ec30caeccc6829c78700"
   },
   "tests/unit/test_orchestrator.py": {
-    "mtime": 1793461508.716403,
-    "seen": 1793529300.5688384,
-    "ast_hash": "3d47de89dc34c2ea81146e9fa2ba6d98",
-    "semantic_hash": "3d47de89dc34c2ea81146e9fa2ba6d98"
+    "mtime": 1793533291.6367166,
+    "seen": 1793533350.5987504,
+    "ast_hash": "345fdfabd993b032ac9fde020fe30d81",
+    "semantic_hash": ""
   },
   "tests/unit/test_planner.py": {
     "mtime": 1793459839.9107573,
@@ -376,5 +376,41 @@
     "seen": 1793529300.568842,
     "ast_hash": "8c0d7e0ba7359b0c83d3de5a98f73abc",
     "semantic_hash": "8c0d7e0ba7359b0c83d3de5a98f73abc"
+  },
+  "README.md": {
+    "mtime": 1793466087.34748,
+    "seen": 1793533350.5987568,
+    "ast_hash": "4a8f20bd296814219410609a0d56bf31",
+    "semantic_hash": ""
+  },
+  "docs/study_guide/00_master_study_guide.md": {
+    "mtime": 1793531644.7300856,
+    "seen": 1793533350.598758,
+    "ast_hash": "90ab97143a1b9591b58016e65f429739",
+    "semantic_hash": ""
+  },
+  "docs/study_guide/01_architecture_and_design_patterns.md": {
+    "mtime": 1793531410.2935834,
+    "seen": 1793533350.598759,
+    "ast_hash": "af47b42dd827d08b9eb6202bbf642e4f",
+    "semantic_hash": ""
+  },
+  "docs/study_guide/02_storage_and_task_engine.md": {
+    "mtime": 1793530893.984264,
+    "seen": 1793533350.5987597,
+    "ast_hash": "77ff0102b5a46a4eb595406a20985702",
+    "semantic_hash": ""
+  },
+  "docs/study_guide/03_agents_workspace_and_process_isolation.md": {
+    "mtime": 1793530918.9046078,
+    "seen": 1793533350.5987606,
+    "ast_hash": "6081c5e6e3818fb69ec8295d061f8336",
+    "semantic_hash": ""
+  },
+  "docs/study_guide/04_orchestrator_quota_and_cli.md": {
+    "mtime": 1793531075.491913,
+    "seen": 1793533350.5987616,
+    "ast_hash": "a95c153afccb1eb482cef94e08a77edd",
+    "semantic_hash": ""
   }
 }

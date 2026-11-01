@@ -178,6 +178,58 @@ class TestOrchestrator(unittest.TestCase):
         orchestrator.tick("p2", available_accounts=["acc-1", "acc-2"])
         self.assertEqual(self.task_repo.get("task-q")["status"], "ACCEPTED")
 
+    def test_orchestrator_events_and_log_streaming(self):
+        """Verify on_event callback receives lifecycle events and logs are written to disk."""
+        self.project_repo.create("p_event", "Event Project", "Testing telemetry events", self.temp_dir)
+        self.task_repo.create("t_event", "p_event", "Telemetry Task", "Testing log and events")
+
+        events_received = []
+
+        def event_listener(etype, data):
+            events_received.append((etype, data))
+
+        adapter = MockAdapter(outcomes={"t_event": (0, "Log stream output content line 1", "")})
+        orchestrator = Orchestrator(
+            self.project_repo,
+            self.task_repo,
+            self.execution_repo,
+            self.event_repo,
+            self.artifact_repo,
+            self.resource_repo,
+            self.workspace_mgr,
+            adapter,
+            self.quota_tracker,
+            on_event=event_listener,
+        )
+
+        # Tick 1: Dispatch
+        orchestrator.tick("p_event", available_accounts=["default"])
+        event_names = [e[0] for e in events_received]
+        self.assertIn("TASK_DISPATCHED", event_names)
+
+        # Wait for proc to finish
+        for _, proc, _, _, _ in orchestrator.active_executions.values():
+            proc.wait(timeout_seconds=5)
+
+        # Tick 2: Verify & Accept
+        orchestrator.tick("p_event", available_accounts=["default"])
+        event_names = [e[0] for e in events_received]
+        self.assertIn("TASK_VERIFYING", event_names)
+        self.assertIn("TASK_ACCEPTED", event_names)
+
+        # Check log file exists
+        execs = self.execution_repo.list_by_task("t_event")
+        self.assertTrue(len(execs) > 0)
+        import json
+        meta = json.loads(execs[-1].get("metadata_json") or "{}")
+        log_path = meta.get("log_path")
+        self.assertIsNotNone(log_path)
+        self.assertTrue(Path(log_path).exists())
+        with open(log_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        self.assertIn("Log stream output content line 1", content)
+        self.assertIn("=== Execution ended with exit code 0 ===", content)
+
 
 if __name__ == "__main__":
     unittest.main()

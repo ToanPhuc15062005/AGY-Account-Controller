@@ -6,6 +6,7 @@ import time
 import datetime
 import subprocess
 import threading
+from pathlib import Path
 from typing import Optional, List, Dict, Tuple, Callable
 from .base import Invocation, TerminationResult
 
@@ -57,9 +58,16 @@ if IS_WINDOWS:
 class ManagedProcess:
     """Manages an active agent subprocess, capturing streams and supervising process tree."""
 
-    def __init__(self, invocation: Invocation, on_stdout_line: Optional[Callable[[str], None]] = None):
+    def __init__(
+        self,
+        invocation: Invocation,
+        on_stdout_line: Optional[Callable[[str], None]] = None,
+        log_path: Optional[str] = None,
+    ):
         self.invocation = invocation
         self.on_stdout_line = on_stdout_line
+        self.log_path = log_path
+        self._log_file = None
 
         self.process: Optional[subprocess.Popen] = None
         self.pid: Optional[int] = None
@@ -107,6 +115,17 @@ class ManagedProcess:
         )
         self.pid = self.process.pid
 
+        # Open dedicated task log file if path provided
+        if self.log_path:
+            try:
+                Path(self.log_path).parent.mkdir(parents=True, exist_ok=True)
+                self._log_file = open(self.log_path, "a", encoding="utf-8", buffering=1)
+                self._log_file.write(f"=== Execution started at {self.start_time} (PID: {self.pid}) ===\n")
+                self._log_file.write(f"Command: {' '.join(self.invocation.command_args[:3])}...\n\n")
+                self._log_file.flush()
+            except Exception:
+                self._log_file = None
+
         if IS_WINDOWS and self.job_handle and self.process:
             try:
                 # Open process handle with PROCESS_SET_QUOTA | PROCESS_TERMINATE
@@ -130,6 +149,12 @@ class ManagedProcess:
         for line in iter(self.process.stdout.readline, ""):
             cleaned = line.rstrip("\r\n")
             self.stdout_lines.append(cleaned)
+            if self._log_file and not self._log_file.closed:
+                try:
+                    self._log_file.write(f"{cleaned}\n")
+                    self._log_file.flush()
+                except Exception:
+                    pass
             if self.on_stdout_line:
                 try:
                     self.on_stdout_line(cleaned)
@@ -143,7 +168,25 @@ class ManagedProcess:
         for line in iter(self.process.stderr.readline, ""):
             cleaned = line.rstrip("\r\n")
             self.stderr_lines.append(cleaned)
+            if self._log_file and not self._log_file.closed:
+                try:
+                    self._log_file.write(f"[STDERR] {cleaned}\n")
+                    self._log_file.flush()
+                except Exception:
+                    pass
         self.process.stderr.close()
+
+    def close_log(self) -> None:
+        """Safely flushes and closes task execution log file."""
+        if self._log_file and not self._log_file.closed:
+            try:
+                code = self.process.poll() if self.process else "UNKNOWN"
+                self._log_file.write(f"\n=== Execution ended with exit code {code} ===\n")
+                self._log_file.flush()
+                self._log_file.close()
+            except Exception:
+                pass
+            self._log_file = None
 
     def wait(self, timeout_seconds: Optional[int] = None) -> int:
         if not self.process:
@@ -153,6 +196,7 @@ class ManagedProcess:
             self._stdout_thread.join(timeout=2.0)
         if self._stderr_thread:
             self._stderr_thread.join(timeout=2.0)
+        self.close_log()
         return exit_code
 
     def is_alive(self) -> bool:
@@ -206,6 +250,8 @@ class ManagedProcess:
             except Exception:
                 pass
             self.job_handle = None
+
+        self.close_log()
 
         return TerminationResult(
             success=(residual == 0),
