@@ -62,9 +62,6 @@ class AGYAdapter(AgentRuntimeAdapter):
         policy = policy or {}
         cmd = [self.agy_cmd_path]
 
-        # ADR-009: AGY orchestration uses headless print mode for unattended execution
-        cmd.append("-p")
-
         # Output format
         output_format = policy.get("output_format", "stream-json")
         cmd.extend(["--output-format", output_format])
@@ -112,7 +109,8 @@ class AGYAdapter(AgentRuntimeAdapter):
             f"EXPECTED ARTIFACTS: {expected_str}\n"
             "REQUIREMENTS: Execute strictly within requested scopes and verify outputs.\n"
         )
-        cmd.append(prompt_body)
+        # ADR-009: AGY orchestration uses headless print mode for unattended execution (-p "<prompt>")
+        cmd.extend(["-p", prompt_body])
 
         timeout = task_contract.get("timeout_seconds", 900)
 
