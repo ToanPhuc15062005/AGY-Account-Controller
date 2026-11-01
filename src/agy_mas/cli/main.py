@@ -105,6 +105,12 @@ def cmd_task(args, ctx):
             params["mode"] = args.mode
         if params:
             task_spec["inputs"] = {"parameters": params}
+        if getattr(args, "no_pair_review", False):
+            task_spec["enable_pair_review"] = False
+        if getattr(args, "reviewer_model", None):
+            task_spec["reviewer_model"] = args.reviewer_model
+        if getattr(args, "max_pair_rounds", None):
+            task_spec["max_pair_rounds"] = args.max_pair_rounds
 
         t = task_repo.create(
             task_id=args.id,
@@ -233,6 +239,27 @@ def cmd_orchestrate(args, ctx):
             model = data.get("model")
             dur = data.get("retry_after_seconds")
             print(f"[{now_str}] [COOLDOWN]  Account '{acc}' model '{model}' entered cooldown for {dur}s", flush=True)
+        elif event_type == "PAIR_REVIEW_STARTED":
+            tid = data.get("task_id")
+            rnd = data.get("round")
+            print(f"[{now_str}] [PAIR_REV]  Task '{tid}' -> Round #{rnd} Reviewer evaluation started", flush=True)
+        elif event_type == "PAIR_REVIEW_APPROVED":
+            tid = data.get("task_id")
+            sc = data.get("score")
+            print(f"[{now_str}] [PAIR_REV]  Task '{tid}' APPROVED by Reviewer! (Score: {sc}/100)", flush=True)
+        elif event_type == "PAIR_REVIEW_REJECTED":
+            tid = data.get("task_id")
+            rnd = data.get("round")
+            fb = data.get("feedback", [])
+            print(f"[{now_str}] [PAIR_REV]  Task '{tid}' CHANGES_REQUESTED (Round #{rnd}). Defect count: {len(fb)}", flush=True)
+        elif event_type == "PAIR_REVIEW_ERROR":
+            tid = data.get("task_id")
+            err = data.get("error")
+            print(f"[{now_str}] [PAIR_REV]  Task '{tid}' Reviewer evaluation error: {err}", flush=True)
+        elif event_type == "PAIR_REVIEW_EXHAUSTED":
+            tid = data.get("task_id")
+            rnds = data.get("rounds")
+            print(f"[{now_str}] [PAIR_REV]  Task '{tid}' Circuit Breaker tripped after {rnds} round(s) without approval", flush=True)
 
     orchestrator = Orchestrator(
         project_repo=ctx["project_repo"],
@@ -349,6 +376,9 @@ def main():
     t_create.add_argument("--model", help="Override Model for this specific task (e.g. claude-sonnet-4-6)")
     t_create.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], help="Override Effort level for this task")
     t_create.add_argument("--mode", choices=["normal", "turbo"], help="Mode for this task (normal hoặc turbo)")
+    t_create.add_argument("--no-pair-review", action="store_true", help="Disable Pair-Programming review for this task")
+    t_create.add_argument("--reviewer-model", help="Override Reviewer Agent model (default: gemini-3.8-flash)")
+    t_create.add_argument("--max-pair-rounds", type=int, default=3, help="Max pair-programming critique rounds (default: 3)")
 
     t_list = task_sp.add_parser("list", help="List tasks")
     t_list.add_argument("project_id", help="Project ID")

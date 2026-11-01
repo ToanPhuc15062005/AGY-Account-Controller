@@ -54,10 +54,10 @@
     "semantic_hash": "24436e89fec6545388f8bd7816d916d5"
   },
   "src/agy_mas/agents/adapters/agy_adapter.py": {
-    "mtime": 1793529808.2088861,
-    "seen": 1793530472.8536015,
-    "ast_hash": "bfef3b503a11bcbe703103e786fdfea4",
-    "semantic_hash": "bfef3b503a11bcbe703103e786fdfea4"
+    "mtime": 1793545292.9095585,
+    "seen": 1793545610.0439904,
+    "ast_hash": "ac1f53a4e2ad5b8c7f6c0d1380bc8d85",
+    "semantic_hash": ""
   },
   "src/agy_mas/agents/base.py": {
     "mtime": 1793457739.1259198,
@@ -78,9 +78,9 @@
     "semantic_hash": "c303d58290b1b0eda8945e9c498c0bb0"
   },
   "src/agy_mas/cli/main.py": {
-    "mtime": 1793533328.587393,
-    "seen": 1793533350.598704,
-    "ast_hash": "9f3e6808e223ea00d1fa6ad270b822d0",
+    "mtime": 1793545552.8570027,
+    "seen": 1793545610.043996,
+    "ast_hash": "d419a327b2be958c24655d8e1f6b7528",
     "semantic_hash": ""
   },
   "src/agy_mas/config.py": {
@@ -102,16 +102,16 @@
     "semantic_hash": ""
   },
   "src/agy_mas/core/orchestrator.py": {
-    "mtime": 1793533097.4749906,
-    "seen": 1793533350.5987084,
-    "ast_hash": "5636ade3dbfebe522bf45cbfea6a380f",
+    "mtime": 1793545406.6169145,
+    "seen": 1793545610.0440001,
+    "ast_hash": "055d381df250a3653980d7b4f0322ae1",
     "semantic_hash": ""
   },
   "src/agy_mas/core/scheduler.py": {
-    "mtime": 1793461455.9463053,
-    "seen": 1793529300.5688086,
-    "ast_hash": "538b69d4721c2f5945eb4cf8b1636f68",
-    "semantic_hash": "538b69d4721c2f5945eb4cf8b1636f68"
+    "mtime": 1793545347.844973,
+    "seen": 1793545610.0440013,
+    "ast_hash": "1be3519097de2d07ae91d757b3c0737f",
+    "semantic_hash": ""
   },
   "src/agy_mas/core/state_machine.py": {
     "mtime": 1793458217.0436673,
@@ -132,10 +132,10 @@
     "semantic_hash": "c5a5fc1a4ee36a19abcd96420243e99b"
   },
   "src/agy_mas/planning/plan_schema.py": {
-    "mtime": 1793457568.9193342,
-    "seen": 1793529300.568812,
-    "ast_hash": "0caf051c013b2864fd8195038a93c6c3",
-    "semantic_hash": "0caf051c013b2864fd8195038a93c6c3"
+    "mtime": 1793545158.926068,
+    "seen": 1793545610.0440054,
+    "ast_hash": "3055de5aa34fd1e8872f11ac0ea085c7",
+    "semantic_hash": ""
   },
   "src/agy_mas/planning/plan_validator.py": {
     "mtime": 1793457637.4710193,
@@ -192,16 +192,16 @@
     "semantic_hash": "5eb9a793fe34b85818fe8c623aac5921"
   },
   "src/agy_mas/storage/migrations/runner.py": {
-    "mtime": 1793457238.7130208,
-    "seen": 1793529300.5688193,
-    "ast_hash": "9f2f5638da0b5663f8867582da8fa1a6",
-    "semantic_hash": "9f2f5638da0b5663f8867582da8fa1a6"
+    "mtime": 1793545184.6683586,
+    "seen": 1793545610.044016,
+    "ast_hash": "918936009ac11ae8159c4199173884a1",
+    "semantic_hash": ""
   },
   "src/agy_mas/storage/repositories/__init__.py": {
-    "mtime": 1793457247.8866673,
-    "seen": 1793529300.5688202,
-    "ast_hash": "a8254152be5e14909fcc3480586f487d",
-    "semantic_hash": "a8254152be5e14909fcc3480586f487d"
+    "mtime": 1793545224.5471728,
+    "seen": 1793545610.0440166,
+    "ast_hash": "bdad6f5e2c088d3adb448ec02a13ea3d",
+    "semantic_hash": ""
   },
   "src/agy_mas/storage/repositories/approval_repo.py": {
     "mtime": 1793457438.9272308,
@@ -222,10 +222,10 @@
     "semantic_hash": "e29eb4e2ef9978ca361fcea2f4586f56"
   },
   "src/agy_mas/storage/repositories/execution_repo.py": {
-    "mtime": 1793457286.4357252,
-    "seen": 1793529300.5688229,
-    "ast_hash": "d6a13467f04534f74e629b559e0e3fd0",
-    "semantic_hash": "d6a13467f04534f74e629b559e0e3fd0"
+    "mtime": 1793545250.6885278,
+    "seen": 1793545610.0440204,
+    "ast_hash": "97b86a6d6ec8fb1f8e0efc98850aeaa6",
+    "semantic_hash": ""
   },
   "src/agy_mas/storage/repositories/project_repo.py": {
     "mtime": 1793457259.077101,
@@ -240,10 +240,10 @@
     "semantic_hash": "e1ad7813bab1b775a8653d13cd9102e5"
   },
   "src/agy_mas/storage/repositories/task_repo.py": {
-    "mtime": 1793457273.0216646,
-    "seen": 1793529300.568825,
-    "ast_hash": "e5d5a6904200f381ad034abebe795c57",
-    "semantic_hash": "e5d5a6904200f381ad034abebe795c57"
+    "mtime": 1793545211.3014646,
+    "seen": 1793545610.0440242,
+    "ast_hash": "eebeee3b4f28a3ef932a3699850ebf6a",
+    "semantic_hash": ""
   },
   "src/agy_mas/verification/__init__.py": {
     "mtime": 1793458358.9710317,
@@ -411,6 +411,36 @@
     "mtime": 1793531075.491913,
     "seen": 1793533350.5987616,
     "ast_hash": "a95c153afccb1eb482cef94e08a77edd",
+    "semantic_hash": ""
+  },
+  "src/agy_mas/agents/review_engine.py": {
+    "mtime": 1793545269.2146418,
+    "seen": 1793545610.043994,
+    "ast_hash": "041eb519fd54997c6d9e246ec1decdcb",
+    "semantic_hash": ""
+  },
+  "src/agy_mas/storage/repositories/review_repo.py": {
+    "mtime": 1793545194.0421815,
+    "seen": 1793545610.0440233,
+    "ast_hash": "84447f3c6b182ded574e91e2d39b3806",
+    "semantic_hash": ""
+  },
+  "tests/unit/test_pair_programming.py": {
+    "mtime": 1793545481.717236,
+    "seen": 1793545610.0440416,
+    "ast_hash": "2919b34ef6f22b4bd4d42098d49c5aa0",
+    "semantic_hash": ""
+  },
+  "docs/proposals/01_CURRENT_SYSTEM_BEFORE.md": {
+    "mtime": 1793542242.799519,
+    "seen": 1793545610.0440488,
+    "ast_hash": "934a005be0ffa0699a8cd6e9ca3ed7bb",
+    "semantic_hash": ""
+  },
+  "docs/proposals/02_PAIR_PROGRAMMING_AFTER.md": {
+    "mtime": 1793543293.582735,
+    "seen": 1793545610.0440497,
+    "ast_hash": "e66b0e27bd2cf3f1a998c9ab962befde",
     "semantic_hash": ""
   }
 }

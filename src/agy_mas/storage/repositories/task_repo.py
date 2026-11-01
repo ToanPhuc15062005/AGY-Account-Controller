@@ -54,6 +54,13 @@ class TaskRepository:
         d = dict(row)
         d["task_spec"] = json.loads(d.get("task_json") or "{}")
         d["dependencies"] = self.get_dependencies(task_id)
+        if d.get("last_critique_json"):
+            try:
+                d["last_critique"] = json.loads(d["last_critique_json"])
+            except Exception:
+                d["last_critique"] = None
+        else:
+            d["last_critique"] = None
         return d
 
     def list_by_project(self, project_id: str, status: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -73,8 +80,29 @@ class TaskRepository:
             d = dict(r)
             d["task_spec"] = json.loads(d.get("task_json") or "{}")
             d["dependencies"] = self.get_dependencies(d["task_id"])
+            if d.get("last_critique_json"):
+                try:
+                    d["last_critique"] = json.loads(d["last_critique_json"])
+                except Exception:
+                    d["last_critique"] = None
+            else:
+                d["last_critique"] = None
             res.append(d)
         return res
+
+    def update_critique(self, task_id: str, critique_dict: Dict[str, Any], pair_round: int) -> bool:
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        critique_json = json.dumps(critique_dict)
+        with self.db.transaction() as conn:
+            cur = conn.execute(
+                """
+                UPDATE tasks
+                SET pair_round = ?, last_critique_json = ?, updated_at = ?
+                WHERE task_id = ?;
+                """,
+                (pair_round, critique_json, now, task_id),
+            )
+            return cur.rowcount > 0
 
     def update_status(self, task_id: str, status: str) -> bool:
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()

@@ -24,6 +24,7 @@ class ExecutionRepository:
         runtime_name: Optional[str] = None,
         runtime_version: Optional[str] = None,
         agent_print_timeout_seconds: Optional[int] = None,
+        execution_role: str = "PRIMARY",
     ) -> Dict[str, Any]:
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         metadata_json = json.dumps(metadata or {})
@@ -41,13 +42,15 @@ class ExecutionRepository:
                 INSERT INTO executions (
                     execution_id, task_id, attempt, agent_id, runtime_type,
                     account_id, model, status, lease_version, started_at,
-                    metadata_json, runtime_name, runtime_version, agent_print_timeout_seconds
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    metadata_json, runtime_name, runtime_version, agent_print_timeout_seconds,
+                    execution_role
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 """,
                 (
                     execution_id, task_id, attempt, agent_id, runtime_type,
                     account_id, model, status, lease_version, now,
-                    metadata_json, runtime_name, runtime_version, agent_print_timeout_seconds
+                    metadata_json, runtime_name, runtime_version, agent_print_timeout_seconds,
+                    execution_role
                 ),
             )
 

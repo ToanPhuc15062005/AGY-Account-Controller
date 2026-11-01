@@ -1,8 +1,46 @@
 """Task contract schema and plan data structures according to MAS Specification v1.1."""
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import List, Dict, Any, Optional
 import fnmatch
+
+
+class ReviewVerdict(str, Enum):
+    APPROVED = "APPROVED"
+    CHANGES_REQUESTED = "CHANGES_REQUESTED"
+
+
+@dataclass
+class ReviewReport:
+    """Biên bản đánh giá chất lượng code do Reviewer tạo ra."""
+    verdict: ReviewVerdict
+    score: int
+    critique_summary: str
+    actionable_feedback: List[str] = field(default_factory=list)
+    test_output_summary: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "verdict": self.verdict.value if isinstance(self.verdict, ReviewVerdict) else str(self.verdict),
+            "score": self.score,
+            "critique_summary": self.critique_summary,
+            "actionable_feedback": self.actionable_feedback,
+            "test_output_summary": self.test_output_summary,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ReviewReport":
+        verdict_raw = data.get("verdict", "CHANGES_REQUESTED")
+        verdict = ReviewVerdict(verdict_raw) if verdict_raw in ("APPROVED", "CHANGES_REQUESTED") else ReviewVerdict.CHANGES_REQUESTED
+        return cls(
+            verdict=verdict,
+            score=int(data.get("score", 0)),
+            critique_summary=data.get("critique_summary", ""),
+            actionable_feedback=list(data.get("actionable_feedback", [])),
+            test_output_summary=data.get("test_output_summary"),
+        )
+
 
 
 @dataclass
@@ -68,6 +106,12 @@ class TaskContract:
     retry_delay_seconds: int = 10
     timeout_seconds: int = 900
     depends_on: List[str] = field(default_factory=list)
+    enable_pair_review: bool = True
+    reviewer_role: str = "qa_reviewer"
+    reviewer_model: Optional[str] = None
+    max_pair_rounds: int = 3
+    pair_round: int = 0
+    last_review_report: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -113,6 +157,12 @@ class TaskContract:
             "retry_delay_seconds": self.retry_delay_seconds,
             "timeout_seconds": self.timeout_seconds,
             "depends_on": self.depends_on,
+            "enable_pair_review": self.enable_pair_review,
+            "reviewer_role": self.reviewer_role,
+            "reviewer_model": self.reviewer_model,
+            "max_pair_rounds": self.max_pair_rounds,
+            "pair_round": self.pair_round,
+            "last_review_report": self.last_review_report,
         }
 
     @classmethod
@@ -169,4 +219,10 @@ class TaskContract:
             retry_delay_seconds=data.get("retry_delay_seconds", 10),
             timeout_seconds=data.get("timeout_seconds", 900),
             depends_on=data.get("depends_on", []),
+            enable_pair_review=data.get("enable_pair_review", True),
+            reviewer_role=data.get("reviewer_role", "qa_reviewer"),
+            reviewer_model=data.get("reviewer_model"),
+            max_pair_rounds=data.get("max_pair_rounds", 3),
+            pair_round=data.get("pair_round", 0),
+            last_review_report=data.get("last_review_report"),
         )

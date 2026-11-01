@@ -43,6 +43,14 @@ class MigrationRunner:
                 )
                 applied.append("002_additions_v1.1")
 
+            if 3 not in existing_versions:
+                self._apply_v1_2_pair_programming(conn)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?);",
+                    (3, "003_pair_programming_v1.2", datetime.datetime.now(datetime.timezone.utc).isoformat())
+                )
+                applied.append("003_pair_programming_v1.2")
+
         return applied
 
     def _apply_v1_0_baseline(self, conn) -> None:
@@ -250,3 +258,40 @@ class MigrationRunner:
         for col_name, col_type in cols_to_add:
             if col_name not in existing_cols:
                 conn.execute(f"ALTER TABLE executions ADD COLUMN {col_name} {col_type};")
+
+    def _apply_v1_2_pair_programming(self, conn) -> None:
+        # Check and add columns to tasks table
+        task_cols_info = conn.execute("PRAGMA table_info(tasks);").fetchall()
+        existing_task_cols: Set[str] = {row["name"] for row in task_cols_info}
+
+        if "pair_round" not in existing_task_cols:
+            conn.execute("ALTER TABLE tasks ADD COLUMN pair_round INTEGER DEFAULT 0;")
+        if "last_critique_json" not in existing_task_cols:
+            conn.execute("ALTER TABLE tasks ADD COLUMN last_critique_json TEXT;")
+
+        # Check and add execution_role to executions table
+        exec_cols_info = conn.execute("PRAGMA table_info(executions);").fetchall()
+        existing_exec_cols: Set[str] = {row["name"] for row in exec_cols_info}
+
+        if "execution_role" not in existing_exec_cols:
+            conn.execute("ALTER TABLE executions ADD COLUMN execution_role TEXT DEFAULT 'PRIMARY';")
+
+        # Create task_reviews table
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS task_reviews (
+                review_id TEXT PRIMARY KEY,
+                task_id TEXT NOT NULL,
+                execution_id TEXT NOT NULL,
+                round_number INTEGER NOT NULL,
+                verdict TEXT NOT NULL,
+                score INTEGER NOT NULL,
+                critique_json TEXT NOT NULL,
+                test_output TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (task_id) REFERENCES tasks(task_id),
+                FOREIGN KEY (execution_id) REFERENCES executions(execution_id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_reviews_task
+                ON task_reviews(task_id, round_number);
+        """)

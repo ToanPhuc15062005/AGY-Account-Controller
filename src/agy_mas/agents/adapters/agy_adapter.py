@@ -103,12 +103,40 @@ class AGYAdapter(AgentRuntimeAdapter):
         expected_arts = outs.get("expected_artifacts", [])
         expected_str = ", ".join(f"`{a.get('path')}`" for a in expected_arts) if expected_arts else "None specified"
 
-        prompt_body = (
-            f"TASK: {title}\n"
-            f"OBJECTIVE: {desc}\n"
-            f"EXPECTED ARTIFACTS: {expected_str}\n"
-            "REQUIREMENTS: Execute strictly within requested scopes and verify outputs.\n"
-        )
+        exec_role = execution_record.get("execution_role", "PRIMARY")
+        if exec_role == "REVIEWER":
+            prompt_body = (
+                f"ROLE: Code Reviewer & QA Inspector\n"
+                f"TASK UNDER REVIEW: {title}\n"
+                f"DESCRIPTION: {desc}\n"
+                f"EXPECTED ARTIFACTS: {expected_str}\n"
+                f"INSTRUCTIONS: Inspect modified workspace files and test outputs.\n"
+                f"Output MUST strictly be a JSON object conforming to ReviewReport schema:\n"
+                f'{{"verdict": "APPROVED"|"CHANGES_REQUESTED", "score": 0-100, "critique_summary": "...", "actionable_feedback": ["..."]}}\n'
+            )
+        else:
+            prompt_body = (
+                f"TASK: {title}\n"
+                f"OBJECTIVE: {desc}\n"
+                f"EXPECTED ARTIFACTS: {expected_str}\n"
+                "REQUIREMENTS: Execute strictly within requested scopes and verify outputs.\n"
+            )
+
+            # Feedback injection from Reviewer if retrying after rejection (Pair-Programming)
+            last_critique = task_contract.get("last_review_report")
+            if last_critique:
+                feedback_list = last_critique.get("actionable_feedback", [])
+                critique_items = "\n".join([f"  - {fb}" for fb in feedback_list]) if feedback_list else "  - Address review critique"
+                round_num = task_contract.get("pair_round", 1)
+                summary = last_critique.get("critique_summary", "Reviewer requested changes.")
+                prompt_body += (
+                    f"\n\n=======================================================\n"
+                    f"🚨 [FEEDBACK FROM CODE REVIEWER - ROUND #{round_num}]:\n"
+                    f"Summary: {summary}\n"
+                    f"Specific Defect List:\n{critique_items}\n\n"
+                    f"INSTRUCTION: Preserve all working logic. Fix ONLY the defects listed above.\n"
+                    f"=======================================================\n"
+                )
         # ADR-009: AGY orchestration uses headless print mode for unattended execution (-p "<prompt>")
         cmd.extend(["-p", prompt_body])
 

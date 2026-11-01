@@ -1,13 +1,8 @@
 {
   "0": "main.py",
   "2": "agy_controller.py",
-  "6": "config.py",
   "12": "TestStorageLayer",
-  "13": ".snapshot_file",
   "14": "ExecutionRepository",
-  "17": ".transaction",
-  "20": ".setUp",
-  "23": "TestAGYAdapterAndQuota",
   "26": "agy-controller.ps1",
   "27": "agy-mas.ps1",
   "28": "install.ps1",

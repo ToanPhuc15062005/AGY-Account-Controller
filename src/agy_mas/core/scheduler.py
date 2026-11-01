@@ -71,11 +71,15 @@ class Scheduler:
             if contracts and tid in contracts:
                 contract = contracts[tid]
             else:
-                raw_spec = task_data.get("task_spec", {})
+                raw_spec = dict(task_data.get("task_spec", {}))
                 raw_spec["task_id"] = tid
                 raw_spec["project_id"] = project_id
                 raw_spec["title"] = task_data["title"]
                 raw_spec["description"] = task_data["description"]
+                if "pair_round" in task_data and task_data["pair_round"] is not None:
+                    raw_spec["pair_round"] = task_data["pair_round"]
+                if "last_critique" in task_data and task_data["last_critique"] is not None:
+                    raw_spec["last_review_report"] = task_data["last_critique"]
                 contract = TaskContract.from_dict(raw_spec)
 
             # Model preference or default

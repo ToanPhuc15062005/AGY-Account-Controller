@@ -10,15 +10,17 @@ from ..storage.repositories import (
     EventRepository,
     ArtifactRepository,
     ResourceRepository,
+    ReviewRepository,
 )
 from ..workspace.workspace_manager import WorkspaceManager
 from ..resources.quota_tracker import QuotaTracker
 from ..agents.base import AgentRuntimeAdapter
 from ..agents.process_manager import ManagedProcess
+from ..agents.review_engine import ReviewEngine
 from .state_machine import TaskStateMachine, TaskState
 from .scheduler import Scheduler, ScheduleDecision
 from .dispatcher import Dispatcher
-from ..planning.plan_schema import TaskContract
+from ..planning.plan_schema import TaskContract, ReviewVerdict, ReviewReport
 
 
 class Orchestrator:
@@ -38,6 +40,8 @@ class Orchestrator:
         max_concurrency: int = 4,
         default_policy: Optional[Dict[str, Any]] = None,
         on_event: Optional[Callable[[str, Dict[str, Any]], None]] = None,
+        review_engine: Optional[ReviewEngine] = None,
+        review_repo: Optional[ReviewRepository] = None,
     ):
         self.project_repo = project_repo
         self.task_repo = task_repo
@@ -50,6 +54,9 @@ class Orchestrator:
         self.default_policy = default_policy or {}
         self.on_event = on_event
         self.last_heartbeat_time = time.time()
+
+        self.review_engine = review_engine or ReviewEngine(workspace_root=self.workspace_mgr.workspace_root)
+        self.review_repo = review_repo or (ReviewRepository(self.task_repo.db) if hasattr(self.task_repo, "db") else None)
 
         self.quota_tracker = quota_tracker or QuotaTracker(resource_repo)
         self.scheduler = Scheduler(task_repo, resource_repo, self.quota_tracker, max_concurrency)
@@ -66,11 +73,67 @@ class Orchestrator:
             except Exception:
                 pass
 
+    def _finalize_acceptance(
+        self,
+        project_id: str,
+        task_id: str,
+        execution_id: str,
+        contract: TaskContract,
+        proc: ManagedProcess,
+        elapsed: float = 0.0,
+    ) -> None:
+        """Helper to register artifacts, complete execution, release locks, and accept task."""
+        self.workspace_mgr.register_task_artifacts(
+            project_id=project_id,
+            task_id=task_id,
+            execution_id=execution_id,
+            expected_artifacts=[{"path": a.path, "artifact_type": a.artifact_type} for a in contract.outputs.expected_artifacts],
+            process=proc,
+        )
+        self.execution_repo.mark_completed(
+            execution_id, status="COMPLETED", exit_code=0, normalized_outcome="SUCCESS"
+        )
+        self.workspace_mgr.ownership_manager.release_all(execution_id)
+
+        TaskStateMachine.transition(
+            self.task_repo, task_id, TaskState.ACCEPTED,
+            event_repo=self.event_repo, execution_id=execution_id, reason="Execution and artifacts verified"
+        )
+        self._emit("TASK_ACCEPTED", {
+            "task_id": task_id,
+            "execution_id": execution_id,
+            "elapsed_seconds": round(elapsed, 1),
+            "artifacts": [a.path for a in contract.outputs.expected_artifacts],
+        })
+
     def tick(self, project_id: str, available_accounts: List[str]) -> Dict[str, Any]:
         """Performs a single evaluation tick over the project lifecycle."""
         project = self.project_repo.get(project_id)
         if not project or project["status"] in ("COMPLETED", "FAILED", "CANCELLED", "PAUSED"):
             return {"status": project["status"] if project else "NOT_FOUND", "active": len(self.active_executions)}
+
+        # 0. Decoupled Promotion: Scan RETRY_WAIT tasks and promote to READY when backoff delay elapses
+        retry_tasks = self.task_repo.list_by_project(project_id, status=TaskState.RETRY_WAIT.value)
+        now_dt = datetime.datetime.now(datetime.timezone.utc)
+        for r_task in retry_tasks:
+            r_tid = r_task["task_id"]
+            spec = r_task.get("task_spec") or {}
+            delay_sec = spec.get("retry_delay_seconds", 5)
+            up_str = r_task.get("updated_at")
+            can_promote = True
+            if up_str:
+                try:
+                    up_dt = datetime.datetime.fromisoformat(up_str)
+                    if (now_dt - up_dt).total_seconds() < delay_sec:
+                        can_promote = False
+                except Exception:
+                    pass
+            if can_promote:
+                TaskStateMachine.transition(
+                    self.task_repo, r_tid, TaskState.READY,
+                    event_repo=self.event_repo,
+                    reason="Backoff delay completed, promoted to READY"
+                )
 
         # 1. Reconcile active executions
         finished_execs = []
@@ -183,29 +246,89 @@ class Orchestrator:
                             reason=f"Task failed: {cls_fail.reason}"
                         )
                 else:
-                    # Exit code 0: Verify artifacts and accept
-                    self.workspace_mgr.register_task_artifacts(
-                        project_id=project_id,
-                        task_id=tid,
-                        execution_id=exec_id,
-                        expected_artifacts=[{"path": a.path, "artifact_type": a.artifact_type} for a in contract.outputs.expected_artifacts],
-                        process=proc,
-                    )
-                    self.execution_repo.mark_completed(
-                        exec_id, status="COMPLETED", exit_code=0, normalized_outcome="SUCCESS"
-                    )
-                    self.workspace_mgr.ownership_manager.release_all(exec_id)
+                    # Exit code 0: Verification & Acceptance Flow
+                    if not contract.enable_pair_review:
+                        self._finalize_acceptance(project_id, tid, exec_id, contract, proc, elapsed)
+                        finished_execs.append(exec_id)
+                        continue
 
-                    TaskStateMachine.transition(
-                        self.task_repo, tid, TaskState.ACCEPTED,
-                        event_repo=self.event_repo, execution_id=exec_id, reason="Execution and artifacts verified"
-                    )
-                    self._emit("TASK_ACCEPTED", {
-                        "task_id": tid,
-                        "execution_id": exec_id,
-                        "elapsed_seconds": round(elapsed, 1),
-                        "artifacts": [a.path for a in contract.outputs.expected_artifacts],
-                    })
+                    # Active Pair-Review with fault-tolerance safeguards
+                    self._emit("PAIR_REVIEW_STARTED", {"task_id": tid, "round": contract.pair_round + 1})
+
+                    try:
+                        review_report = self.review_engine.execute_review(
+                            project_id=project_id,
+                            task_contract=contract,
+                            coder_execution_id=exec_id,
+                            workspace_root=self.workspace_mgr.workspace_root,
+                            timeout_seconds=180,
+                        )
+                    except Exception as review_err:
+                        # Fallback if reviewer crashes or times out
+                        self._emit("PAIR_REVIEW_ERROR", {"task_id": tid, "error": str(review_err)})
+                        self.execution_repo.mark_completed(
+                            exec_id, status="COMPLETED", exit_code=0, normalized_outcome="REVIEW_ERROR"
+                        )
+                        self.workspace_mgr.ownership_manager.release_all(exec_id)
+                        TaskStateMachine.transition(
+                            self.task_repo, tid, TaskState.RETRY_WAIT,
+                            event_repo=self.event_repo, execution_id=exec_id,
+                            reason=f"Reviewer execution failed: {review_err}"
+                        )
+                        finished_execs.append(exec_id)
+                        continue
+
+                    # Persist review report into ReviewRepository
+                    if self.review_repo:
+                        try:
+                            self.review_repo.create(
+                                task_id=tid,
+                                execution_id=exec_id,
+                                round_number=contract.pair_round + 1,
+                                verdict=review_report.verdict.value if hasattr(review_report.verdict, "value") else str(review_report.verdict),
+                                score=review_report.score,
+                                critique=review_report.to_dict(),
+                                test_output=review_report.test_output_summary,
+                            )
+                        except Exception:
+                            pass
+
+                    if review_report.verdict == ReviewVerdict.APPROVED:
+                        self._finalize_acceptance(project_id, tid, exec_id, contract, proc, elapsed)
+                        self._emit("PAIR_REVIEW_APPROVED", {
+                            "task_id": tid,
+                            "score": review_report.score,
+                        })
+                    else:
+                        contract.pair_round += 1
+                        contract.last_review_report = review_report.to_dict()
+                        # Mark coder execution record as completed with CHANGES_REQUESTED
+                        self.execution_repo.mark_completed(
+                            exec_id, status="COMPLETED", exit_code=0, normalized_outcome="CHANGES_REQUESTED"
+                        )
+                        # Release write lease locks immediately to prevent OwnershipConflictError on retry
+                        self.workspace_mgr.ownership_manager.release_all(exec_id)
+
+                        if contract.pair_round < contract.max_pair_rounds:
+                            self.task_repo.update_critique(tid, review_report.to_dict(), contract.pair_round)
+                            self._emit("PAIR_REVIEW_REJECTED", {
+                                "task_id": tid,
+                                "round": contract.pair_round,
+                                "feedback": review_report.actionable_feedback,
+                            })
+                            # Transition to RETRY_WAIT; Decoupled scheduler promotion handles moving to READY
+                            TaskStateMachine.transition(
+                                self.task_repo, tid, TaskState.RETRY_WAIT,
+                                event_repo=self.event_repo, execution_id=exec_id,
+                                reason=f"Reviewer requested changes (Round {contract.pair_round})"
+                            )
+                        else:
+                            self._emit("PAIR_REVIEW_EXHAUSTED", {"task_id": tid, "rounds": contract.pair_round})
+                            TaskStateMachine.transition(
+                                self.task_repo, tid, TaskState.FAILED,
+                                event_repo=self.event_repo, execution_id=exec_id,
+                                reason="Max pair-programming rounds reached without approval"
+                            )
 
                 finished_execs.append(exec_id)
 

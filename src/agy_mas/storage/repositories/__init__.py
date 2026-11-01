@@ -5,6 +5,7 @@ from .event_repo import EventRepository
 from .artifact_repo import ArtifactRepository
 from .resource_repo import ResourceRepository
 from .approval_repo import ApprovalRepository
+from .review_repo import ReviewRepository
 
 __all__ = [
     "ProjectRepository",
@@ -14,4 +15,5 @@ __all__ = [
     "ArtifactRepository",
     "ResourceRepository",
     "ApprovalRepository",
+    "ReviewRepository",
 ]
