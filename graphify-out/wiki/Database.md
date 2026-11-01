@@ -1,79 +1,53 @@
 # Database
 
-> God node · 55 connections · `src/agy_mas/storage/database.py`
+> 16 nodes · cohesion 0.16
 
-**Community:** [Community 21](Community_21.md)
+## Key Concepts
 
-## Connections by Relation
+- **Database** (55 connections) — `src/agy_mas/storage/database.py`
+- **.connect()** (9 connections) — `src/agy_mas/storage/database.py`
+- **.execute()** (5 connections) — `src/agy_mas/storage/database.py`
+- **Connection** (3 connections)
+- **._create_connection()** (3 connections) — `src/agy_mas/storage/database.py`
+- **Any** (3 connections)
+- **.close()** (2 connections) — `src/agy_mas/storage/database.py`
+- **.__init__()** (2 connections) — `src/agy_mas/storage/database.py`
+- **storage/__init__.py** (2 connections) — `src/agy_mas/storage/__init__.py`
+- **.__init__()** (2 connections) — `src/agy_mas/storage/repositories/execution_repo.py`
+- **.__init__()** (2 connections) — `src/agy_mas/storage/repositories/resource_repo.py`
+- **Cursor** (1 connections)
+- **Manages SQLite database connections and transactions with robust pragmas.** (1 connections) — `src/agy_mas/storage/database.py`
+- **Context manager yielding a thread-local SQLite connection.** (1 connections) — `src/agy_mas/storage/database.py`
+- **Executes a query directly within an auto-commit or existing transaction.** (1 connections) — `src/agy_mas/storage/database.py`
+- **Closes thread-local connection if open.** (1 connections) — `src/agy_mas/storage/database.py`
 
-### calls
-- init_mas() `EXTRACTED`
-- .setUp() `EXTRACTED`
-- .setUp() `EXTRACTED`
-- .setUp() `EXTRACTED`
-- .setUp() `EXTRACTED`
-- .setUp() `EXTRACTED`
-- .setUp() `EXTRACTED`
-- .setUp() `EXTRACTED`
-- .setUp() `EXTRACTED`
+## Relationships
 
-### contains
-- database.py `EXTRACTED`
+- [main.py](main.py.md) (11 shared connections)
+- [MigrationRunner](MigrationRunner.md) (8 shared connections)
+- [ResourceRepository](ResourceRepository.md) (7 shared connections)
+- [TaskRepository](TaskRepository.md) (5 shared connections)
+- [.transaction](transaction.md) (3 shared connections)
+- [EventRepository](EventRepository.md) (3 shared connections)
+- [.setUp](setUp.md) (3 shared connections)
+- [.fetchone](fetchone.md) (3 shared connections)
+- [TaskContract](TaskContract.md) (3 shared connections)
+- [ArtifactRepository](ArtifactRepository.md) (2 shared connections)
+- [ExecutionRepository](ExecutionRepository.md) (2 shared connections)
+- [agy_controller.py](agy_controller.py.md) (1 shared connections)
 
-### imports
-- main.py `EXTRACTED`
-- runner.py `EXTRACTED`
-- task_repo.py `EXTRACTED`
-- resource_repo.py `EXTRACTED`
-- event_repo.py `EXTRACTED`
-- artifact_repo.py `EXTRACTED`
-- project_repo.py `EXTRACTED`
-- execution_repo.py `EXTRACTED`
-- approval_repo.py `EXTRACTED`
-- storage/__init__.py `EXTRACTED`
+## Source Files
 
-### method
-- .transaction() `EXTRACTED`
-- .fetchall() `EXTRACTED`
-- .fetchone() `EXTRACTED`
-- .connect() `EXTRACTED`
-- .execute() `EXTRACTED`
-- ._create_connection() `EXTRACTED`
-- .__init__() `EXTRACTED`
-- .close() `EXTRACTED`
+- `src/agy_mas/storage/__init__.py`
+- `src/agy_mas/storage/database.py`
+- `src/agy_mas/storage/repositories/execution_repo.py`
+- `src/agy_mas/storage/repositories/resource_repo.py`
 
-### rationale_for
-- Manages SQLite database connections and transactions with robust pragmas. `EXTRACTED`
+## Audit Trail
 
-### references
-- .__init__() `EXTRACTED`
-- .__init__() `EXTRACTED`
-- .__init__() `EXTRACTED`
-- .__init__() `EXTRACTED`
-- .__init__() `EXTRACTED`
-- .__init__() `EXTRACTED`
-- .__init__() `EXTRACTED`
-- .__init__() `EXTRACTED`
-
-### uses
-- [ResourceRepository](ResourceRepository.md) `INFERRED`
-- [TaskRepository](TaskRepository.md) `INFERRED`
-- [MigrationRunner](MigrationRunner.md) `INFERRED`
-- [ExecutionRepository](ExecutionRepository.md) `INFERRED`
-- [EventRepository](EventRepository.md) `INFERRED`
-- [TestWorkspaceCoordination](TestWorkspaceCoordination.md) `INFERRED`
-- ProjectRepository `INFERRED`
-- TestTaskEngine `INFERRED`
-- TestArchitectureV11Acceptance `INFERRED`
-- ArtifactRepository `INFERRED`
-- TestVerificationAndRecovery `INFERRED`
-- TestAGYAdapterAndQuota `INFERRED`
-- TestStorageLayer `INFERRED`
-- TestOrchestrator `INFERRED`
-- TestPlanner `INFERRED`
-- ApprovalRepository `INFERRED`
-- check_account_status() `INFERRED`
-- get_active_workers_info() `INFERRED`
+- EXTRACTED: 56 (76%)
+- INFERRED: 18 (24%)
+- AMBIGUOUS: 0 (0%)
 
 ---
 

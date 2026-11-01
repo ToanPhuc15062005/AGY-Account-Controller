@@ -1,46 +1,45 @@
 # EventRepository
 
-> God node · 24 connections · `src/agy_mas/storage/repositories/event_repo.py`
+> 8 nodes · cohesion 0.29
 
-**Community:** [Community 0](Community_0.md)
+## Key Concepts
 
-## Connections by Relation
+- **EventRepository** (23 connections) — `src/agy_mas/storage/repositories/event_repo.py`
+- **init_mas()** (14 connections) — `src/agy_mas/cli/main.py`
+- **.__init__()** (6 connections) — `src/agy_mas/core/dispatcher.py`
+- **.__init__()** (5 connections) — `src/agy_mas/recovery/recovery_manager.py`
+- **.append()** (4 connections) — `src/agy_mas/storage/repositories/event_repo.py`
+- **.list_by_project()** (3 connections) — `src/agy_mas/storage/repositories/event_repo.py`
+- **.__init__()** (2 connections) — `src/agy_mas/storage/repositories/event_repo.py`
+- **Any** (2 connections)
 
-### calls
-- init_mas() `EXTRACTED`
-- .setUp() `INFERRED`
-- .setUp() `INFERRED`
-- .setUp() `INFERRED`
-- .setUp() `INFERRED`
-- .setUp() `EXTRACTED`
+## Relationships
 
-### contains
-- event_repo.py `EXTRACTED`
+- [orchestrator.py](orchestrator.py.md) (9 shared connections)
+- [ResourceRepository](ResourceRepository.md) (7 shared connections)
+- [main.py](main.py.md) (5 shared connections)
+- [MigrationRunner](MigrationRunner.md) (4 shared connections)
+- [TaskRepository](TaskRepository.md) (4 shared connections)
+- [Database](Database.md) (3 shared connections)
+- [ExecutionRepository](ExecutionRepository.md) (3 shared connections)
+- [config.py](config.py.md) (2 shared connections)
+- [ArtifactRepository](ArtifactRepository.md) (1 shared connections)
+- [AGYAdapter](AGYAdapter.md) (1 shared connections)
+- [AgentRuntimeAdapter](AgentRuntimeAdapter.md) (1 shared connections)
+- [.setUp](setUp.md) (1 shared connections)
 
-### imports
-- main.py `EXTRACTED`
-- orchestrator.py `EXTRACTED`
-- dispatcher.py `EXTRACTED`
-- repositories/__init__.py `EXTRACTED`
-- recovery_manager.py `EXTRACTED`
-- state_machine.py `EXTRACTED`
+## Source Files
 
-### method
-- .append() `EXTRACTED`
-- .list_by_project() `EXTRACTED`
-- .__init__() `EXTRACTED`
+- `src/agy_mas/cli/main.py`
+- `src/agy_mas/core/dispatcher.py`
+- `src/agy_mas/recovery/recovery_manager.py`
+- `src/agy_mas/storage/repositories/event_repo.py`
 
-### references
-- .transition() `EXTRACTED`
-- .__init__() `EXTRACTED`
-- .__init__() `EXTRACTED`
-- .__init__() `EXTRACTED`
+## Audit Trail
 
-### uses
-- [Database](Database.md) `INFERRED`
-- TestTaskEngine `INFERRED`
-- Dispatcher `INFERRED`
-- TaskStateMachine `INFERRED`
+- EXTRACTED: 40 (78%)
+- INFERRED: 11 (22%)
+- AMBIGUOUS: 0 (0%)
 
 ---
 

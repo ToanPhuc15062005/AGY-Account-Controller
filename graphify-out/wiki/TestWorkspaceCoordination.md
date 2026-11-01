@@ -2,7 +2,7 @@
 
 > God node · 24 connections · `tests/unit/test_workspace.py`
 
-**Community:** [Community 16](Community_16.md)
+**Community:** [ResourceRepository](ResourceRepository.md)
 
 ## Connections by Relation
 
@@ -24,9 +24,9 @@
 - [MigrationRunner](MigrationRunner.md) `INFERRED`
 - [WorkspaceManager](WorkspaceManager.md) `INFERRED`
 - [ExecutionRepository](ExecutionRepository.md) `INFERRED`
-- PathPolicy `INFERRED`
+- [PathPolicy](PathPolicy.md) `INFERRED`
 - ProjectRepository `INFERRED`
-- ArtifactRepository `INFERRED`
+- [ArtifactRepository](ArtifactRepository.md) `INFERRED`
 - WindowsFileRetryManager `INFERRED`
 - OwnershipManager `INFERRED`
 - SnapshotManager `INFERRED`

@@ -2,7 +2,7 @@
 
 > God node · 24 connections · `src/agy_mas/resources/quota_tracker.py`
 
-**Community:** [Community 4](Community_4.md)
+**Community:** [ResourceRepository](ResourceRepository.md)
 
 ## Connections by Relation
 
@@ -16,8 +16,8 @@
 - quota_tracker.py `EXTRACTED`
 
 ### imports
-- main.py `EXTRACTED`
-- orchestrator.py `EXTRACTED`
+- [main.py](main.py.md) `EXTRACTED`
+- [orchestrator.py](orchestrator.py.md) `EXTRACTED`
 - scheduler.py `EXTRACTED`
 - resources/__init__.py `EXTRACTED`
 
@@ -39,7 +39,7 @@
 - [ResourceRepository](ResourceRepository.md) `INFERRED`
 - TestArchitectureV11Acceptance `INFERRED`
 - Orchestrator `INFERRED`
-- TestAGYAdapterAndQuota `INFERRED`
+- [TestAGYAdapterAndQuota](TestAGYAdapterAndQuota.md) `INFERRED`
 - Scheduler `INFERRED`
 - TestOrchestrator `INFERRED`
 - QuotaConfig `INFERRED`

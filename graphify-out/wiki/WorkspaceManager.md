@@ -1,8 +1,8 @@
 # WorkspaceManager
 
-> God node · 26 connections · `src/agy_mas/workspace/workspace_manager.py`
+> God node · 25 connections · `src/agy_mas/workspace/workspace_manager.py`
 
-**Community:** [Community 11](Community_11.md)
+**Community:** [ResourceRepository](ResourceRepository.md)
 
 ## Connections by Relation
 
@@ -16,8 +16,8 @@
 - workspace_manager.py `EXTRACTED`
 
 ### imports
-- main.py `EXTRACTED`
-- orchestrator.py `EXTRACTED`
+- [main.py](main.py.md) `EXTRACTED`
+- [orchestrator.py](orchestrator.py.md) `EXTRACTED`
 - dispatcher.py `EXTRACTED`
 - workspace/__init__.py `EXTRACTED`
 
@@ -35,11 +35,10 @@
 ### uses
 - [ResourceRepository](ResourceRepository.md) `INFERRED`
 - [TestWorkspaceCoordination](TestWorkspaceCoordination.md) `INFERRED`
-- PathPolicy `INFERRED`
+- [PathPolicy](PathPolicy.md) `INFERRED`
 - TestArchitectureV11Acceptance `INFERRED`
-- ArtifactRepository `INFERRED`
+- [ArtifactRepository](ArtifactRepository.md) `INFERRED`
 - Orchestrator `INFERRED`
-- Dispatcher `INFERRED`
 - WindowsFileRetryManager `INFERRED`
 - OwnershipManager `INFERRED`
 - SnapshotManager `INFERRED`
