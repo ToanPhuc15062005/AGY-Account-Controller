@@ -2,6 +2,7 @@
 
 import uuid
 import datetime
+import time
 from typing import Dict, Any, Optional, Tuple
 from ..agents.base import AgentRuntimeAdapter
 from ..agents.process_manager import ManagedProcess
@@ -9,6 +10,7 @@ from ..storage.repositories.task_repo import TaskRepository
 from ..storage.repositories.execution_repo import ExecutionRepository
 from ..storage.repositories.event_repo import EventRepository
 from ..workspace.workspace_manager import WorkspaceManager
+from ..accounts.credential_provider import CredentialSwitchLock, switch_credential_to_account
 from .state_machine import TaskStateMachine, TaskState
 from .scheduler import ScheduleDecision
 
@@ -81,8 +83,14 @@ class Dispatcher:
         inv_policy["workspace_root"] = self.workspace_mgr.workspace_root
         invocation = self.adapter.build_invocation(contract.to_dict(), exec_record, inv_policy)
 
-        process = ManagedProcess(invocation)
-        process.start()
+        # Atomic credential switch with startup grace period to prevent cross-account race conditions
+        with CredentialSwitchLock():
+            if decision.account_id:
+                switch_credential_to_account(decision.account_id)
+            process = ManagedProcess(invocation)
+            process.start()
+            if decision.account_id:
+                time.sleep(0.4)
 
         # 5. Record PID and mark RUNNING
         self.execution_repo.mark_process_started(

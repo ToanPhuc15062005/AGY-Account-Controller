@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_agy_mas_ps1", "label": "agy-mas.ps1", "file_type": "code", "source_file": "agy-mas.ps1", "source_location": "L1"}], "edges": [], "raw_calls": [{"caller_nid": "$graphify-root$_agy_mas_ps1", "callee": "python", "is_member_call": false, "source_file": "agy-mas.ps1", "source_location": "L2"}]}

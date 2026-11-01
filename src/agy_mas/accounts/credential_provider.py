@@ -3,6 +3,7 @@
 import os
 import sys
 import time
+import json
 from pathlib import Path
 from contextlib import contextmanager
 from typing import Optional
@@ -12,6 +13,27 @@ if IS_WINDOWS:
     import msvcrt
 else:
     import fcntl
+
+
+def switch_credential_to_account(account_id: str) -> bool:
+    """Safely updates OS Credential Manager to the given account's stored session."""
+    if not IS_WINDOWS or not account_id:
+        return False
+    profile_path = Path.home() / ".gemini" / "agy-profiles" / f"{account_id}.json"
+    if not profile_path.exists():
+        return False
+    try:
+        data = json.loads(profile_path.read_text(encoding="utf-8"))
+        session = data.get("session")
+        if not session:
+            return False
+        # Import dynamically from agy_controller
+        from agy_controller import write_current_session, set_active_profile_name
+        write_current_session(session)
+        set_active_profile_name(account_id)
+        return True
+    except Exception:
+        return False
 
 
 class CredentialSwitchLock:

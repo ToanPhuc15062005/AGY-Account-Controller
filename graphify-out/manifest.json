@@ -1,0 +1,380 @@
+{
+  "agy-controller.ps1": {
+    "mtime": 1793415854.1815395,
+    "seen": 1793529300.5687885,
+    "ast_hash": "df2047132575d3713b1dd93879c5cac3",
+    "semantic_hash": "df2047132575d3713b1dd93879c5cac3"
+  },
+  "agy-mas.ps1": {
+    "mtime": 1793458467.2982233,
+    "seen": 1793529300.5687933,
+    "ast_hash": "6ae59007c7a09c44b5d637c487f33973",
+    "semantic_hash": "6ae59007c7a09c44b5d637c487f33973"
+  },
+  "agy_controller.py": {
+    "mtime": 1793465371.0014129,
+    "seen": 1793529300.5687954,
+    "ast_hash": "7412b1437177e60655fb930ab82d660a",
+    "semantic_hash": "7412b1437177e60655fb930ab82d660a"
+  },
+  "install.ps1": {
+    "mtime": 1793415854.1825397,
+    "seen": 1793529300.5687966,
+    "ast_hash": "50e6eddc56babf13a6b4a7a632295017",
+    "semantic_hash": "50e6eddc56babf13a6b4a7a632295017"
+  },
+  "src/agy_mas/__init__.py": {
+    "mtime": 1793457176.877491,
+    "seen": 1793529300.5687973,
+    "ast_hash": "bd41077ca803ac4b9a332b9126c105ed",
+    "semantic_hash": "bd41077ca803ac4b9a332b9126c105ed"
+  },
+  "src/agy_mas/accounts/__init__.py": {
+    "mtime": 1793457848.3588374,
+    "seen": 1793529300.5687985,
+    "ast_hash": "02f82784efe4c801ff97c964ec16597a",
+    "semantic_hash": "02f82784efe4c801ff97c964ec16597a"
+  },
+  "src/agy_mas/accounts/credential_provider.py": {
+    "mtime": 1793457824.8178036,
+    "seen": 1793529300.5687993,
+    "ast_hash": "a451069cb20d0f2e57ad916c7080381d",
+    "semantic_hash": "a451069cb20d0f2e57ad916c7080381d"
+  },
+  "src/agy_mas/agents/__init__.py": {
+    "mtime": 1793457830.5549788,
+    "seen": 1793529300.5688,
+    "ast_hash": "d10a0fe0b38f6d24f696117e19e070ca",
+    "semantic_hash": "d10a0fe0b38f6d24f696117e19e070ca"
+  },
+  "src/agy_mas/agents/adapters/__init__.py": {
+    "mtime": 1793457835.098559,
+    "seen": 1793529300.5688007,
+    "ast_hash": "24436e89fec6545388f8bd7816d916d5",
+    "semantic_hash": "24436e89fec6545388f8bd7816d916d5"
+  },
+  "src/agy_mas/agents/adapters/agy_adapter.py": {
+    "mtime": 1793465341.3381915,
+    "seen": 1793529300.5688016,
+    "ast_hash": "bd7ee0410b01d56bad834d81182723c0",
+    "semantic_hash": "bd7ee0410b01d56bad834d81182723c0"
+  },
+  "src/agy_mas/agents/base.py": {
+    "mtime": 1793457739.1259198,
+    "seen": 1793529300.5688024,
+    "ast_hash": "c1cc21c8fce5b6cd3a4436ba41da49d4",
+    "semantic_hash": "c1cc21c8fce5b6cd3a4436ba41da49d4"
+  },
+  "src/agy_mas/agents/process_manager.py": {
+    "mtime": 1793457758.522318,
+    "seen": 1793529300.5688033,
+    "ast_hash": "3b6c2e9c67e2d7b57d008ca539a50cc7",
+    "semantic_hash": "3b6c2e9c67e2d7b57d008ca539a50cc7"
+  },
+  "src/agy_mas/cli/__init__.py": {
+    "mtime": 1793458484.2959206,
+    "seen": 1793529300.5688038,
+    "ast_hash": "c303d58290b1b0eda8945e9c498c0bb0",
+    "semantic_hash": "c303d58290b1b0eda8945e9c498c0bb0"
+  },
+  "src/agy_mas/cli/main.py": {
+    "mtime": 1793462136.8886538,
+    "seen": 1793529300.5688045,
+    "ast_hash": "1e5eb9931e47b7d07c19ded1a177ee03",
+    "semantic_hash": "1e5eb9931e47b7d07c19ded1a177ee03"
+  },
+  "src/agy_mas/config.py": {
+    "mtime": 1793457190.7723393,
+    "seen": 1793529300.5688055,
+    "ast_hash": "8b06a9e53e51048d6dee332e7ac037ae",
+    "semantic_hash": "8b06a9e53e51048d6dee332e7ac037ae"
+  },
+  "src/agy_mas/core/__init__.py": {
+    "mtime": 1793458150.8362834,
+    "seen": 1793529300.5688062,
+    "ast_hash": "280035aec5cd2e7b8000a1623bddca70",
+    "semantic_hash": "280035aec5cd2e7b8000a1623bddca70"
+  },
+  "src/agy_mas/core/dispatcher.py": {
+    "mtime": 1793458191.1459363,
+    "seen": 1793529300.568807,
+    "ast_hash": "e1fdf5555e63eb51e875ae512b96a3e1",
+    "semantic_hash": "e1fdf5555e63eb51e875ae512b96a3e1"
+  },
+  "src/agy_mas/core/orchestrator.py": {
+    "mtime": 1793462123.1462479,
+    "seen": 1793529300.5688076,
+    "ast_hash": "ec80d9b88db71962c7c11cfe64598f25",
+    "semantic_hash": "ec80d9b88db71962c7c11cfe64598f25"
+  },
+  "src/agy_mas/core/scheduler.py": {
+    "mtime": 1793461455.9463053,
+    "seen": 1793529300.5688086,
+    "ast_hash": "538b69d4721c2f5945eb4cf8b1636f68",
+    "semantic_hash": "538b69d4721c2f5945eb4cf8b1636f68"
+  },
+  "src/agy_mas/core/state_machine.py": {
+    "mtime": 1793458217.0436673,
+    "seen": 1793529300.5688093,
+    "ast_hash": "f1bd22ed2edd445338e576a1ff4d004b",
+    "semantic_hash": "f1bd22ed2edd445338e576a1ff4d004b"
+  },
+  "src/agy_mas/planning/__init__.py": {
+    "mtime": 1793459654.3374538,
+    "seen": 1793529300.56881,
+    "ast_hash": "43a149ac86ff45195feef8672bcbdb9e",
+    "semantic_hash": "43a149ac86ff45195feef8672bcbdb9e"
+  },
+  "src/agy_mas/planning/dependency_graph.py": {
+    "mtime": 1793457594.2987812,
+    "seen": 1793529300.5688107,
+    "ast_hash": "c5a5fc1a4ee36a19abcd96420243e99b",
+    "semantic_hash": "c5a5fc1a4ee36a19abcd96420243e99b"
+  },
+  "src/agy_mas/planning/plan_schema.py": {
+    "mtime": 1793457568.9193342,
+    "seen": 1793529300.568812,
+    "ast_hash": "0caf051c013b2864fd8195038a93c6c3",
+    "semantic_hash": "0caf051c013b2864fd8195038a93c6c3"
+  },
+  "src/agy_mas/planning/plan_validator.py": {
+    "mtime": 1793457637.4710193,
+    "seen": 1793529300.5688126,
+    "ast_hash": "c4caeaf78aed5d2af8a92d529f2e187c",
+    "semantic_hash": "c4caeaf78aed5d2af8a92d529f2e187c"
+  },
+  "src/agy_mas/planning/planner.py": {
+    "mtime": 1793461441.885165,
+    "seen": 1793529300.5688133,
+    "ast_hash": "ffdf8db4d9a3f662c74b55f167c7c293",
+    "semantic_hash": "ffdf8db4d9a3f662c74b55f167c7c293"
+  },
+  "src/agy_mas/recovery/__init__.py": {
+    "mtime": 1793458363.757706,
+    "seen": 1793529300.568814,
+    "ast_hash": "bc48fa83172f2ea209b1c69b801c3f9a",
+    "semantic_hash": "bc48fa83172f2ea209b1c69b801c3f9a"
+  },
+  "src/agy_mas/recovery/recovery_manager.py": {
+    "mtime": 1793458352.663304,
+    "seen": 1793529300.5688148,
+    "ast_hash": "784d5845386b05423da68f41db5fb20c",
+    "semantic_hash": "784d5845386b05423da68f41db5fb20c"
+  },
+  "src/agy_mas/resources/__init__.py": {
+    "mtime": 1793457843.6972618,
+    "seen": 1793529300.5688157,
+    "ast_hash": "45022c1a0436c4b5f78db52647904ba5",
+    "semantic_hash": "45022c1a0436c4b5f78db52647904ba5"
+  },
+  "src/agy_mas/resources/quota_tracker.py": {
+    "mtime": 1793457805.117754,
+    "seen": 1793529300.5688164,
+    "ast_hash": "ff7d3eab04f640947242675ace3a5f66",
+    "semantic_hash": "ff7d3eab04f640947242675ace3a5f66"
+  },
+  "src/agy_mas/storage/__init__.py": {
+    "mtime": 1793457199.024575,
+    "seen": 1793529300.5688171,
+    "ast_hash": "5b277ece4afc88d747def9798a65abfb",
+    "semantic_hash": "5b277ece4afc88d747def9798a65abfb"
+  },
+  "src/agy_mas/storage/database.py": {
+    "mtime": 1793457211.3085787,
+    "seen": 1793529300.5688179,
+    "ast_hash": "50ab229b5db74586d917fa8ad7ae6068",
+    "semantic_hash": "50ab229b5db74586d917fa8ad7ae6068"
+  },
+  "src/agy_mas/storage/migrations/__init__.py": {
+    "mtime": 1793457219.3007178,
+    "seen": 1793529300.5688186,
+    "ast_hash": "5eb9a793fe34b85818fe8c623aac5921",
+    "semantic_hash": "5eb9a793fe34b85818fe8c623aac5921"
+  },
+  "src/agy_mas/storage/migrations/runner.py": {
+    "mtime": 1793457238.7130208,
+    "seen": 1793529300.5688193,
+    "ast_hash": "9f2f5638da0b5663f8867582da8fa1a6",
+    "semantic_hash": "9f2f5638da0b5663f8867582da8fa1a6"
+  },
+  "src/agy_mas/storage/repositories/__init__.py": {
+    "mtime": 1793457247.8866673,
+    "seen": 1793529300.5688202,
+    "ast_hash": "a8254152be5e14909fcc3480586f487d",
+    "semantic_hash": "a8254152be5e14909fcc3480586f487d"
+  },
+  "src/agy_mas/storage/repositories/approval_repo.py": {
+    "mtime": 1793457438.9272308,
+    "seen": 1793529300.5688207,
+    "ast_hash": "e7ba05ff651bdfeb9b5d17f352b3c123",
+    "semantic_hash": "e7ba05ff651bdfeb9b5d17f352b3c123"
+  },
+  "src/agy_mas/storage/repositories/artifact_repo.py": {
+    "mtime": 1793457404.558792,
+    "seen": 1793529300.5688214,
+    "ast_hash": "3f1da3f8a9d2751904b52dcdecede7d8",
+    "semantic_hash": "3f1da3f8a9d2751904b52dcdecede7d8"
+  },
+  "src/agy_mas/storage/repositories/event_repo.py": {
+    "mtime": 1793457387.171071,
+    "seen": 1793529300.5688224,
+    "ast_hash": "e29eb4e2ef9978ca361fcea2f4586f56",
+    "semantic_hash": "e29eb4e2ef9978ca361fcea2f4586f56"
+  },
+  "src/agy_mas/storage/repositories/execution_repo.py": {
+    "mtime": 1793457286.4357252,
+    "seen": 1793529300.5688229,
+    "ast_hash": "d6a13467f04534f74e629b559e0e3fd0",
+    "semantic_hash": "d6a13467f04534f74e629b559e0e3fd0"
+  },
+  "src/agy_mas/storage/repositories/project_repo.py": {
+    "mtime": 1793457259.077101,
+    "seen": 1793529300.5688238,
+    "ast_hash": "3893a6253639c33add0b825c287f1204",
+    "semantic_hash": "3893a6253639c33add0b825c287f1204"
+  },
+  "src/agy_mas/storage/repositories/resource_repo.py": {
+    "mtime": 1793457425.1329715,
+    "seen": 1793529300.5688245,
+    "ast_hash": "e1ad7813bab1b775a8653d13cd9102e5",
+    "semantic_hash": "e1ad7813bab1b775a8653d13cd9102e5"
+  },
+  "src/agy_mas/storage/repositories/task_repo.py": {
+    "mtime": 1793457273.0216646,
+    "seen": 1793529300.568825,
+    "ast_hash": "e5d5a6904200f381ad034abebe795c57",
+    "semantic_hash": "e5d5a6904200f381ad034abebe795c57"
+  },
+  "src/agy_mas/verification/__init__.py": {
+    "mtime": 1793458358.9710317,
+    "seen": 1793529300.5688262,
+    "ast_hash": "a917dfa38b7700696954fd7bb49cd48b",
+    "semantic_hash": "a917dfa38b7700696954fd7bb49cd48b"
+  },
+  "src/agy_mas/verification/acceptance_checker.py": {
+    "mtime": 1793458310.9436138,
+    "seen": 1793529300.568827,
+    "ast_hash": "e018b069c309741cd83e9a6983d01a87",
+    "semantic_hash": "e018b069c309741cd83e9a6983d01a87"
+  },
+  "src/agy_mas/verification/artifact_checker.py": {
+    "mtime": 1793458295.0356348,
+    "seen": 1793529300.5688279,
+    "ast_hash": "d8fdffe32051e1fc88bac48813a2779e",
+    "semantic_hash": "d8fdffe32051e1fc88bac48813a2779e"
+  },
+  "src/agy_mas/verification/scope_checker.py": {
+    "mtime": 1793458302.6039145,
+    "seen": 1793529300.5688286,
+    "ast_hash": "6a08d749e3fcd35cded9e29ffc622bb7",
+    "semantic_hash": "6a08d749e3fcd35cded9e29ffc622bb7"
+  },
+  "src/agy_mas/verification/verifier.py": {
+    "mtime": 1793458338.7539752,
+    "seen": 1793529300.5688295,
+    "ast_hash": "ecd344ccec67f854d13ac635c4ae2bdf",
+    "semantic_hash": "ecd344ccec67f854d13ac635c4ae2bdf"
+  },
+  "src/agy_mas/workspace/__init__.py": {
+    "mtime": 1793457994.7678573,
+    "seen": 1793529300.5688303,
+    "ast_hash": "6f7cf609cfe5440ecd74ff4a39d8eb1c",
+    "semantic_hash": "6f7cf609cfe5440ecd74ff4a39d8eb1c"
+  },
+  "src/agy_mas/workspace/file_lock_manager.py": {
+    "mtime": 1793457952.708343,
+    "seen": 1793529300.5688307,
+    "ast_hash": "f05f0b8067444395ca3645b0ce6a3496",
+    "semantic_hash": "f05f0b8067444395ca3645b0ce6a3496"
+  },
+  "src/agy_mas/workspace/ownership_manager.py": {
+    "mtime": 1793457963.4954956,
+    "seen": 1793529300.5688314,
+    "ast_hash": "234d90c995abc2483a9785a77fd0be0f",
+    "semantic_hash": "234d90c995abc2483a9785a77fd0be0f"
+  },
+  "src/agy_mas/workspace/path_policy.py": {
+    "mtime": 1793457923.7793944,
+    "seen": 1793529300.5688322,
+    "ast_hash": "3a8f47a4de92f48849a05a87bf540969",
+    "semantic_hash": "3a8f47a4de92f48849a05a87bf540969"
+  },
+  "src/agy_mas/workspace/snapshot_manager.py": {
+    "mtime": 1793458024.3201003,
+    "seen": 1793529300.568833,
+    "ast_hash": "aadbe294a2cd59a44fc5471b5e4e7488",
+    "semantic_hash": "aadbe294a2cd59a44fc5471b5e4e7488"
+  },
+  "src/agy_mas/workspace/workspace_manager.py": {
+    "mtime": 1793457986.6844177,
+    "seen": 1793529300.5688338,
+    "ast_hash": "02ab780c1833bfed5890132b07049d29",
+    "semantic_hash": "02ab780c1833bfed5890132b07049d29"
+  },
+  "tests/__init__.py": {
+    "mtime": 1793458525.2751732,
+    "seen": 1793529300.5688345,
+    "ast_hash": "b363dadb854abc38ebe100ea66865c04",
+    "semantic_hash": "b363dadb854abc38ebe100ea66865c04"
+  },
+  "tests/integration/__init__.py": {
+    "mtime": 1793458536.733248,
+    "seen": 1793529300.5688353,
+    "ast_hash": "8f585f29a04560d059d65bc3ef4aecfb",
+    "semantic_hash": "8f585f29a04560d059d65bc3ef4aecfb"
+  },
+  "tests/integration/test_e2e_acceptance.py": {
+    "mtime": 1793458514.2562666,
+    "seen": 1793529300.5688362,
+    "ast_hash": "d5cff9fd0320c9d8bf7e10ad85610efe",
+    "semantic_hash": "d5cff9fd0320c9d8bf7e10ad85610efe"
+  },
+  "tests/unit/__init__.py": {
+    "mtime": 1793458531.5577238,
+    "seen": 1793529300.568837,
+    "ast_hash": "a727744b57944032e42dda5b29a11df9",
+    "semantic_hash": "a727744b57944032e42dda5b29a11df9"
+  },
+  "tests/unit/test_agy_adapter.py": {
+    "mtime": 1793457863.922254,
+    "seen": 1793529300.5688376,
+    "ast_hash": "644fd97e5581ec30caeccc6829c78700",
+    "semantic_hash": "644fd97e5581ec30caeccc6829c78700"
+  },
+  "tests/unit/test_orchestrator.py": {
+    "mtime": 1793461508.716403,
+    "seen": 1793529300.5688384,
+    "ast_hash": "3d47de89dc34c2ea81146e9fa2ba6d98",
+    "semantic_hash": "3d47de89dc34c2ea81146e9fa2ba6d98"
+  },
+  "tests/unit/test_planner.py": {
+    "mtime": 1793459839.9107573,
+    "seen": 1793529300.568839,
+    "ast_hash": "a11272252ded0d3ffcdd761219d7f805",
+    "semantic_hash": "a11272252ded0d3ffcdd761219d7f805"
+  },
+  "tests/unit/test_storage.py": {
+    "mtime": 1793457470.4674485,
+    "seen": 1793529300.56884,
+    "ast_hash": "853ad3fc30f957507db962947863accb",
+    "semantic_hash": "853ad3fc30f957507db962947863accb"
+  },
+  "tests/unit/test_task_engine.py": {
+    "mtime": 1793457686.4134138,
+    "seen": 1793529300.5688407,
+    "ast_hash": "b8709e82c01a7fd3749666c2e9467a56",
+    "semantic_hash": "b8709e82c01a7fd3749666c2e9467a56"
+  },
+  "tests/unit/test_verification_recovery.py": {
+    "mtime": 1793458378.6590502,
+    "seen": 1793529300.5688412,
+    "ast_hash": "f6ac5f4c339d8c5f2659baa7cb76de27",
+    "semantic_hash": "f6ac5f4c339d8c5f2659baa7cb76de27"
+  },
+  "tests/unit/test_workspace.py": {
+    "mtime": 1793458041.120324,
+    "seen": 1793529300.568842,
+    "ast_hash": "8c0d7e0ba7359b0c83d3de5a98f73abc",
+    "semantic_hash": "8c0d7e0ba7359b0c83d3de5a98f73abc"
+  }
+}
