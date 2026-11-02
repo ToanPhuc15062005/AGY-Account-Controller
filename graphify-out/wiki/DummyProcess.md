@@ -12,7 +12,7 @@
 ## Relationships
 
 - [main.py](main.py.md) (1 shared connections)
-- [ResourceRepository](ResourceRepository.md) (1 shared connections)
+- [TestWorkspaceCoordination](TestWorkspaceCoordination.md) (1 shared connections)
 
 ## Source Files
 

@@ -1,42 +1,43 @@
 # ExecutionRepository
 
-> 10 nodes · cohesion 0.38
+> 9 nodes · cohesion 0.28
 
 ## Key Concepts
 
-- **ExecutionRepository** (24 connections) — `src/agy_mas/storage/repositories/execution_repo.py`
-- **.reconcile_startup()** (10 connections) — `src/agy_mas/recovery/recovery_manager.py`
-- **.mark_completed()** (6 connections) — `src/agy_mas/storage/repositories/execution_repo.py`
-- **.create()** (5 connections) — `src/agy_mas/storage/repositories/execution_repo.py`
+- **._finalize_acceptance()** (9 connections) — `src/agy_mas/core/orchestrator.py`
+- **.mark_completed()** (7 connections) — `src/agy_mas/storage/repositories/execution_repo.py`
+- **.create()** (6 connections) — `src/agy_mas/storage/repositories/execution_repo.py`
 - **.get()** (5 connections) — `src/agy_mas/storage/repositories/execution_repo.py`
 - **.list_by_task()** (5 connections) — `src/agy_mas/storage/repositories/execution_repo.py`
 - **Any** (5 connections)
 - **.get_latest_for_task()** (4 connections) — `src/agy_mas/storage/repositories/execution_repo.py`
-- **Any** (1 connections)
-- **Detects dead workers from previous runs, releases locks, and safely resets…** (1 connections) — `src/agy_mas/recovery/recovery_manager.py`
+- **3.1. Repository Pattern & Data Access Layer** (2 connections) — `docs/study_guide/01_architecture_and_design_patterns.md`
+- **Helper to register artifacts, complete execution, release locks, and accept…** (1 connections) — `src/agy_mas/core/orchestrator.py`
 
 ## Relationships
 
-- [orchestrator.py](orchestrator.py.md) (10 shared connections)
-- [ResourceRepository](ResourceRepository.md) (6 shared connections)
-- [EventRepository](EventRepository.md) (3 shared connections)
-- [main.py](main.py.md) (3 shared connections)
-- [TaskRepository](TaskRepository.md) (2 shared connections)
-- [Database](Database.md) (2 shared connections)
+- [Orchestrator](Orchestrator.md) (5 shared connections)
+- [Database](Database.md) (5 shared connections)
+- [recovery_manager.py](recovery_manager.py.md) (3 shared connections)
+- [ManagedProcess](ManagedProcess.md) (2 shared connections)
 - [.transaction](transaction.md) (2 shared connections)
 - [.fetchone](fetchone.md) (2 shared connections)
-- [.setUp](setUp.md) (1 shared connections)
-- [MigrationRunner](MigrationRunner.md) (1 shared connections)
+- [3. CÁC DESIGN PATTERNS CỐT LÕI](3._CÁC_DESIGN_PATTERNS_CỐT_LÕI.md) (1 shared connections)
+- [.transition](transition.md) (1 shared connections)
+- [TaskContract](TaskContract.md) (1 shared connections)
+- [.snapshot_file](snapshot_file.md) (1 shared connections)
+- [TaskRepository](TaskRepository.md) (1 shared connections)
 
 ## Source Files
 
-- `src/agy_mas/recovery/recovery_manager.py`
+- `docs/study_guide/01_architecture_and_design_patterns.md`
+- `src/agy_mas/core/orchestrator.py`
 - `src/agy_mas/storage/repositories/execution_repo.py`
 
 ## Audit Trail
 
-- EXTRACTED: 30 (61%)
-- INFERRED: 19 (39%)
+- EXTRACTED: 20 (59%)
+- INFERRED: 14 (41%)
 - AMBIGUOUS: 0 (0%)
 
 ---

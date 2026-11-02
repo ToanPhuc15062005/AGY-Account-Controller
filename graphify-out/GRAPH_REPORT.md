@@ -1,9 +1,7 @@
-# Graph Report - multi-agy-tool  (2026-11-01)
+# Graph Report - multi-agy-tool  (2026-11-02)
 
 ## Corpus Check
-- 74 files · ~62,485 words
-- Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 4 file(s) not represented in the graph (top: .cmd 3, (none) 1)
+- cluster-only mode — file stats not available
 
 ## Summary
 - 953 nodes · 2552 edges · 57 communities (35 shown, 22 thin omitted)
@@ -39,7 +37,7 @@
 - TestWorkspaceCoordination
 - MASTER STUDY GUIDE — AGY-MAS ARCHITECTURE & DEVELOPMENT
 - ARCHITECTURE BASELINE (BEFORE: HIỆN TRẠNG HỆ THỐNG)
-- ConfigurableTestAdapter
+- RuntimeCapabilities
 - GIÁO TRÌNH KIẾN TRÚC & PHÁT TRIỂN AGY-MAS
 - main.py
 - ARCHITECTURE PROPOSAL (AFTER: KIẾN TRÚC PAIR-PROGRAMMING)
@@ -48,12 +46,12 @@
 - ResourceRepository
 - GIÁO TRÌNH KIẾN TRÚC & PHÁT TRIỂN AGY-MAS
 - Module 03: Agents Runtime, Workspace Management & Process Isolation trên Windows
-- .register_task_artifacts
+- .snapshot_file
 - .resolve_safe_path
 - Verifier
 - .fetchone
 - 8. CÂU HỎI ÔN TẬP TỔNG HỢP (LIÊN CHUYÊN ĐỀ)
-- 2.5. Hệ Thống 7 Repositories Chuyên Biệt
+- ApprovalRepository
 - Orchestrator
 - 1.3. Mục Tiêu Học Tập (Learning Outcomes)
 - DummyProcess
@@ -75,19 +73,19 @@
 7. `6.1. Classes & Modules` - 34 edges
 8. `MigrationRunner` - 33 edges
 9. `QuotaTracker` - 31 edges
-10. `EventRepository` - 31 edges
+10. `PathPolicy` - 31 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `5.3. Lá Chắn Kiến Trúc: Ngăn Chặn Poisoning Xác Thực Chéo` --references--> `get_active_workers_info()`  [INFERRED]
-  docs/study_guide/04_orchestrator_quota_and_cli.md → agy_controller.py
-- `6.3. Hệ Thống Wrappers Windows & Cài Đặt PATH Người Dùng` --references--> `cmd_install()`  [INFERRED]
-  docs/study_guide/04_orchestrator_quota_and_cli.md → agy_controller.py
-- `📑 Mục lục` --references--> `AgentRuntimeAdapter`  [INFERRED]
-  docs/study_guide/03_agents_workspace_and_process_isolation.md → src/agy_mas/agents/base.py
-- `Lab 1: Thử nghiệm Cơ chế Tự sát của Windows Job Objects` --references--> `ManagedProcess`  [INFERRED]
-  docs/study_guide/03_agents_workspace_and_process_isolation.md → src/agy_mas/agents/process_manager.py
-- `2.2. Nguyên Tắc Modular Monolith` --references--> `Orchestrator`  [INFERRED]
-  docs/study_guide/01_architecture_and_design_patterns.md → src/agy_mas/core/orchestrator.py
+- `Quy trình ra quyết định:` --references--> `DependencyGraph`  [INFERRED]
+  docs/study_guide/04_orchestrator_quota_and_cli.md → src/agy_mas/planning/dependency_graph.py
+- `5.4. Lỗi "Soft Denial" Và Tiêu Chí Nghiệm Thu Không Phụ Thuộc Exit Code` --references--> `AcceptanceCriterion`  [INFERRED]
+  docs/study_guide/02_storage_and_task_engine.md → src/agy_mas/planning/plan_schema.py
+- `6. SƠ ĐỒ QUAN HỆ THỰC THỂ (ERD TỔNG QUÁT)` --references--> `TaskContract`  [INFERRED]
+  docs/study_guide/01_architecture_and_design_patterns.md → src/agy_mas/planning/plan_schema.py
+- `6.2. Luồng Tự Trị Một Lệnh Duy Nhất: `agy-mas run "<goal>"`` --references--> `TaskContract`  [INFERRED]
+  docs/study_guide/04_orchestrator_quota_and_cli.md → src/agy_mas/planning/plan_schema.py
+- `Quy trình 3 bước tự động thực thi:` --references--> `TaskContract`  [INFERRED]
+  README.md → src/agy_mas/planning/plan_schema.py
 
 ## Import Cycles
 - None detected.
@@ -194,7 +192,7 @@ Nodes (27): 1.1. Bối Cảnh Bài Toán và Vị Trí Của Storage & Task Engi
 Cohesion: 0.12
 Nodes (17): 2. `ScopeChecker` ([scope_checker.py](file:///C:/Users/TOAN%20PHUC/Desktop/project/multi-agy-tool/src/agy_mas/verification/scope_checker.py)), 3. `AcceptanceChecker` ([acceptance_checker.py](file:///C:/Users/TOAN%20PHUC/Desktop/project/multi-agy-tool/src/agy_mas/verification/acceptance_checker.py)), 5.1. Triết lý "Exit Code 0 không đồng nghĩa với Thành công", 5.2. Các Bộ kiểm định Chuyên biệt: Artifact, Scope và Acceptance Criteria, 5. Đường ống Thẩm định & Xác minh Tác vụ Độc lập (`verification/`), 6.1. Sequence Diagram: Vòng đời Thực thi Một Tác vụ, 6.2. Cô lập Tài khoản Đa tiến trình với `CredentialSwitchLock`, 6.3. Khắc phục Sự cố Sập nguồn & Dọn rác Tiến trình Chết (`recovery/`) (+9 more)
 
-### Community 41 - ".register_task_artifacts"
+### Community 41 - ".snapshot_file"
 Cohesion: 0.14
 Nodes (8): 3.4. Facade Pattern — `WorkspaceManager`, 4.1. Chính sách An toàn Đường dẫn (`path_policy.py`), 4.3. Quản trị Quyền Ghi theo Lease Mẫu Đường dẫn (`ownership_manager.py`), 4.4. Snapshot Deliverables & Quyết định Kiến trúc ADR-016 (`snapshot_manager.py`), 4.5. Facade Điều phối Workspace (`workspace_manager.py`), 4. Phân hệ Quản trị Workspace & Windows Hardening (`workspace/`), Quy tắc kiểm tra xung đột:, Vì sao quy tắc này sống còn?
 
@@ -206,7 +204,7 @@ Nodes (3): 5.3. Verification Engine: Thực thi ADR-014 và ADR-017, Lab 3: Thi�
 Cohesion: 0.40
 Nodes (5): 8. CÂU HỎI ÔN TẬP TỔNG HỢP (LIÊN CHUYÊN ĐỀ), Nhóm A — Kiến Trúc Tổng Thể, Nhóm B — Data Flow & State, Nhóm C — Windows Hardening, Nhóm E — Design & Trade-offs
 
-### Community 46 - "2.5. Hệ Thống 7 Repositories Chuyên Biệt"
+### Community 46 - "ApprovalRepository"
 Cohesion: 0.17
 Nodes (9): 1. [`ProjectRepository`](file:///C:/Users/TOAN%20PHUC/Desktop/project/multi-agy-tool/src/agy_mas/storage/repositories/project_repo.py#L9), 2.5. Hệ Thống 7 Repositories Chuyên Biệt, 2. [`TaskRepository`](file:///C:/Users/TOAN%20PHUC/Desktop/project/multi-agy-tool/src/agy_mas/storage/repositories/task_repo.py#L9), 3. [`ExecutionRepository`](file:///C:/Users/TOAN%20PHUC/Desktop/project/multi-agy-tool/src/agy_mas/storage/repositories/execution_repo.py#L9), 4. [`EventRepository`](file:///C:/Users/TOAN%20PHUC/Desktop/project/multi-agy-tool/src/agy_mas/storage/repositories/event_repo.py#L10), 5. [`ArtifactRepository`](file:///C:/Users/TOAN%20PHUC/Desktop/project/multi-agy-tool/src/agy_mas/storage/repositories/artifact_repo.py#L10), 6. [`ResourceRepository`](file:///C:/Users/TOAN%20PHUC/Desktop/project/multi-agy-tool/src/agy_mas/storage/repositories/resource_repo.py#L8), 7. [`ApprovalRepository`](file:///C:/Users/TOAN%20PHUC/Desktop/project/multi-agy-tool/src/agy_mas/storage/repositories/approval_repo.py#L10) (+1 more)
 
@@ -240,13 +238,13 @@ Nodes (3): Nhóm D — Error Handling & Recovery, is_pid_alive(), RecoveryManage
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Database` connect `Database` to `main.py`, `TaskContract`, `agy_controller.py`, `main.py`, `ResourceRepository`, `GIÁO TRÌNH KIẾN TRÚC & PHÁT TRIỂN AGY-MAS`, `TaskRepository`, `.fetchone`, `TestStorageLayer`, `2.5. Hệ Thống 7 Repositories Chuyên Biệt`, `AGYAdapter`, `1.3. Mục Tiêu Học Tập (Learning Outcomes)`, `.transaction`, `Orchestrator`, `config.py`, `TestWorkspaceCoordination`?**
+- **Why does `Database` connect `Database` to `main.py`, `TaskContract`, `agy_controller.py`, `main.py`, `ResourceRepository`, `GIÁO TRÌNH KIẾN TRÚC & PHÁT TRIỂN AGY-MAS`, `TaskRepository`, `.fetchone`, `TestStorageLayer`, `ApprovalRepository`, `AGYAdapter`, `1.3. Mục Tiêu Học Tập (Learning Outcomes)`, `.transaction`, `Orchestrator`, `config.py`, `TestWorkspaceCoordination`?**
   _High betweenness centrality (0.126) - this node is a cross-community bridge._
 - **Are the 28 inferred relationships involving `Database` (e.g. with `check_account_status()` and `get_active_workers_info()`) actually correct?**
   _`Database` has 28 INFERRED edges - model-reasoned connections that need verification._
 - **Should `main.py` be split into smaller, more focused modules?**
   _Cohesion score 0.07686453576864535 - nodes in this community are weakly interconnected._
-- **Why does `6.1. Classes & Modules` connect `ResourceRepository` to `TaskContract`, `TaskStateMachine`, `PathPolicy`, `OwnershipManager`, `Database`, `Verifier`, `TaskRepository`, `WindowsFileRetryManager`, `2.5. Hệ Thống 7 Repositories Chuyên Biệt`, `Orchestrator`, `AGYAdapter`, `AgentRuntimeAdapter`, `TestWorkspaceCoordination`, `MASTER STUDY GUIDE — AGY-MAS ARCHITECTURE & DEVELOPMENT`, `ManagedProcess`, `recovery_manager.py`?**
+- **Why does `6.1. Classes & Modules` connect `ResourceRepository` to `TaskContract`, `TaskStateMachine`, `PathPolicy`, `OwnershipManager`, `Database`, `Verifier`, `TaskRepository`, `WindowsFileRetryManager`, `ApprovalRepository`, `Orchestrator`, `AGYAdapter`, `AgentRuntimeAdapter`, `TestWorkspaceCoordination`, `MASTER STUDY GUIDE — AGY-MAS ARCHITECTURE & DEVELOPMENT`, `ManagedProcess`, `recovery_manager.py`?**
   _High betweenness centrality (0.081) - this node is a cross-community bridge._
 - **Are the 26 inferred relationships involving `TaskContract` (e.g. with `1.3. Mục Tiêu Học Tập (Learning Outcomes)` and `6.1. Classes & Modules`) actually correct?**
   _`TaskContract` has 26 INFERRED edges - model-reasoned connections that need verification._

@@ -1,6 +1,6 @@
 # Database
 
-> God node · 55 connections · `src/agy_mas/storage/database.py`
+> God node · 68 connections · `src/agy_mas/storage/database.py`
 
 **Community:** [Database](Database.md)
 
@@ -8,6 +8,7 @@
 
 ### calls
 - init_mas() `EXTRACTED`
+- .setUp() `EXTRACTED`
 - .setUp() `EXTRACTED`
 - .setUp() `EXTRACTED`
 - .setUp() `EXTRACTED`
@@ -30,6 +31,7 @@
 - project_repo.py `EXTRACTED`
 - execution_repo.py `EXTRACTED`
 - approval_repo.py `EXTRACTED`
+- review_repo.py `EXTRACTED`
 - storage/__init__.py `EXTRACTED`
 
 ### method
@@ -46,6 +48,13 @@
 - Manages SQLite database connections and transactions with robust pragmas. `EXTRACTED`
 
 ### references
+- [6.1. Classes & Modules](6.1._Classes_&_Modules.md) `INFERRED`
+- MỤC LỤC TỔNG QUAN `INFERRED`
+- 5. GOD NODES & ĐIỂM KẾT NỐI TRUNG TÂM `INFERRED`
+- 2.1. Quản Lý Kết Nối & Transaction Context: `Database` `INFERRED`
+- Lab 1: Khám Phá Knowledge Graph (15 phút) `INFERRED`
+- 4.1. Chuyên Đề 01 — Kiến Trúc & Design Patterns `INFERRED`
+- Câu hỏi mức Hiểu (Understanding) `INFERRED`
 - .__init__() `EXTRACTED`
 - .__init__() `EXTRACTED`
 - .__init__() `EXTRACTED`
@@ -54,26 +63,30 @@
 - .__init__() `EXTRACTED`
 - .__init__() `EXTRACTED`
 - .__init__() `EXTRACTED`
+- .__init__() `EXTRACTED`
+- 1.2. Các Con Số Quan Trọng `INFERRED`
 
 ### uses
 - [ResourceRepository](ResourceRepository.md) `INFERRED`
 - [TaskRepository](TaskRepository.md) `INFERRED`
 - [MigrationRunner](MigrationRunner.md) `INFERRED`
+- EventRepository `INFERRED`
 - [ExecutionRepository](ExecutionRepository.md) `INFERRED`
-- [TestWorkspaceCoordination](TestWorkspaceCoordination.md) `INFERRED`
-- [EventRepository](EventRepository.md) `INFERRED`
 - ProjectRepository `INFERRED`
+- [TestWorkspaceCoordination](TestWorkspaceCoordination.md) `INFERRED`
+- ArtifactRepository `INFERRED`
 - TestTaskEngine `INFERRED`
 - TestArchitectureV11Acceptance `INFERRED`
-- [ArtifactRepository](ArtifactRepository.md) `INFERRED`
+- TestPairProgramming `INFERRED`
 - TestVerificationAndRecovery `INFERRED`
-- [TestAGYAdapterAndQuota](TestAGYAdapterAndQuota.md) `INFERRED`
+- TestAGYAdapterAndQuota `INFERRED`
 - [TestStorageLayer](TestStorageLayer.md) `INFERRED`
+- [ApprovalRepository](ApprovalRepository.md) `INFERRED`
+- ReviewRepository `INFERRED`
 - TestOrchestrator `INFERRED`
 - TestPlanner `INFERRED`
-- ApprovalRepository `INFERRED`
-- check_account_status() `INFERRED`
 - get_active_workers_info() `INFERRED`
+- check_account_status() `INFERRED`
 
 ---
 

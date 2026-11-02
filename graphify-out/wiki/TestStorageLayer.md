@@ -18,10 +18,8 @@
 
 ## Relationships
 
+- [Database](Database.md) (3 shared connections)
 - [main.py](main.py.md) (1 shared connections)
-- [.setUp](setUp.md) (1 shared connections)
-- [Database](Database.md) (1 shared connections)
-- [MigrationRunner](MigrationRunner.md) (1 shared connections)
 
 ## Source Files
 

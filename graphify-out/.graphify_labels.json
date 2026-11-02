@@ -1,14 +1,1 @@
-{
-  "0": "main.py",
-  "2": "agy_controller.py",
-  "12": "TestStorageLayer",
-  "14": "ExecutionRepository",
-  "26": "agy-controller.ps1",
-  "27": "agy-mas.ps1",
-  "28": "install.ps1",
-  "29": "cli/__init__.py",
-  "30": "agy_mas/__init__.py",
-  "31": "tests/__init__.py",
-  "32": "integration/__init__.py",
-  "33": "unit/__init__.py"
-}
+{"0": "main.py", "1": "TaskContract", "2": "agy_controller.py", "3": "TaskStateMachine", "4": "PathPolicy", "5": "OwnershipManager", "6": "FileSharingContentionError", "7": "ReviewEngine", "8": "GIÁO TRÌNH KIẾN TRÚC & PHÁT TRIỂN AGY-MAS", "9": "Database", "10": "MockAdapter", "11": "TaskRepository", "12": "TestStorageLayer", "13": "WindowsFileRetryManager", "14": "ExecutionRepository", "15": "AGYAdapter", "16": "Invocation", "17": ".transaction", "18": "AgentRuntimeAdapter", "19": ".transition", "20": "config.py", "21": "TestWorkspaceCoordination", "22": "MASTER STUDY GUIDE — AGY-MAS ARCHITECTURE & DEVELOPMENT", "23": "ARCHITECTURE BASELINE (BEFORE: HIỆN TRẠNG HỆ THỐNG)", "24": "RuntimeCapabilities", "25": "GIÁO TRÌNH KIẾN TRÚC & PHÁT TRIỂN AGY-MAS", "26": "agy-controller.ps1", "27": "agy-mas.ps1", "28": "install.ps1", "29": "cli/__init__.py", "30": "agy_mas/__init__.py", "31": "tests/__init__.py", "32": "integration/__init__.py", "33": "unit/__init__.py", "34": "main.py", "35": "ARCHITECTURE PROPOSAL (AFTER: KIẾN TRÚC PAIR-PROGRAMMING)", "36": "Antigravity Controller & Multi-Agent System (`agy-mas`)", "37": "2. CHƯƠNG 1: VÒNG LẶP ĐIỀU PHỐI TRUNG TÂM (CENTRAL ORCHESTRATOR)", "38": "ResourceRepository", "39": "GIÁO TRÌNH KIẾN TRÚC & PHÁT TRIỂN AGY-MAS", "40": "Module 03: Agents Runtime, Workspace Management & Process Isolation trên Windows", "41": ".snapshot_file", "42": ".resolve_safe_path", "43": "Verifier", "44": ".fetchone", "45": "8. CÂU HỎI ÔN TẬP TỔNG HỢP (LIÊN CHUYÊN ĐỀ)", "46": "ApprovalRepository", "47": "Orchestrator", "48": "1.3. Mục Tiêu Học Tập (Learning Outcomes)", "49": "DummyProcess", "50": "CredentialSwitchLock", "51": "7.2. Integration Acceptance Criteria", "52": "3. CÁC DESIGN PATTERNS CỐT LÕI", "53": ".test_pair_programming_circuit_breaker", "54": ".test_pair_programming_approval_flow", "55": "ManagedProcess", "56": "recovery_manager.py"}
